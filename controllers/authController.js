@@ -2,7 +2,6 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-
 require('dotenv').config();
 
 exports.register = async (req, res) => {
@@ -11,7 +10,6 @@ exports.register = async (req, res) => {
         const userName = name || req.body.user_name;
         const userEmail = email || req.body.user_email;
         const userPassword = password || req.body.user_password;
-        const userRole = role || req.body.role;
 
         if (!userName || !userEmail || !userPassword) {
             return res.status(400).json({ message: 'Name, email and password are required' });
@@ -79,14 +77,11 @@ exports.login = async (req, res) => {
     }
 };
 
-// optional endpoint to verify token and return user data
+// verify token and return user data
 exports.me = async (req, res) => {
     try {
         if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
-        const [rows] = await pool.execute(
-            'SELECT user_id, user_name, user_email, user_profile, role, created_at FROM users WHERE user_id = ?',
-            [req.user.id]
-        );
+        const [rows] = await pool.execute('SELECT user_id, user_name, user_email, user_profile, role, created_at FROM users WHERE user_id = ?',[req.user.id]);
         if (!rows.length) return res.status(404).json({ message: 'User not found' });
         res.json({ user: rows[0] });
     } catch (err) {

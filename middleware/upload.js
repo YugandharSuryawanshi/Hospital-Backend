@@ -2,7 +2,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-
 // ensure uploads folder exists
 const uploadDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -21,10 +20,6 @@ cb(null, unique + path.extname(file.originalname));
 function fileFilter(req, file, cb) {
 const allowed = /jpeg|jpg|png|webp/;
 const ext = path.extname(file.originalname).toLowerCase();
-const mimeOK = allowed.test(file.mimetype);
-const extOK = allowed.test(ext);
-if (mimeOK && extOK) cb(null, true);
-else cb(new Error('Only image files are allowed (jpg, jpeg, png, webp)'));
 }
 
 

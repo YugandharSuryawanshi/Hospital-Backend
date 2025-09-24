@@ -53,7 +53,6 @@ exports.addSlides = async (req, res) => {
             return res.status(400).json({ message: "No file uploaded" });
         }
 
-        // store only the filename
         const filename = req.file.filename;
         await pool.execute("INSERT INTO slides (slide_image) VALUES (?)", [filename]);
 

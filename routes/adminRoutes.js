@@ -21,7 +21,7 @@ router.get("/getdoctors", adminController.getAllDoctors);
 
 router.get("/appointments", adminController.getAllAppointments);
 
-// delete slide
+// delete slide //working are remaining
 router.delete("/slides/:id", verifyToken, isAdmin, adminController.deleteSlide);
 
 module.exports = router;
