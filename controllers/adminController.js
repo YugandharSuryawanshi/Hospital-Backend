@@ -124,13 +124,6 @@ exports.getAllAppointments = async (req, res) => {
 
 
 
-
-
-
-
-
-
-
 // Delete slide
 exports.deleteSlide = async (req, res) => {
     try {
