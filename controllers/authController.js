@@ -1,9 +1,9 @@
-// controllers/authController.js
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+// Register Route
 exports.register = async (req, res) => {
     try {
         const { name, email, password, role } = req.body || {};
@@ -39,7 +39,7 @@ exports.register = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: err.message });
     }
 };
-
+// Login Route
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body || {};
