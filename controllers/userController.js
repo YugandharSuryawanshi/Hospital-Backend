@@ -2,6 +2,7 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 
+// Get SLides
 exports.getSlides = async (req, res) => {
     try {
         const [rows] = await pool.execute("SELECT * FROM slides");
@@ -11,8 +12,6 @@ exports.getSlides = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
-
-
 
 exports.addAppointment = async (req, res) => {
     try {
@@ -38,9 +37,7 @@ exports.addAppointment = async (req, res) => {
         }
 
         const [result] = await pool.execute(
-            `INSERT INTO appointments
-        (doctor_id, user_name, user_contact, user_email, appointment_datetime, notes)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO appointments (doctor_id, user_name, user_contact, user_email, appointment_datetime, notes) VALUES (?, ?, ?, ?, ?, ?)`,
             [doctorId, user_name, user_contact, user_email || null, dt, notes || null]
         );
 
