@@ -13,6 +13,7 @@ exports.getSlides = async (req, res) => {
     }
 };
 
+// Add Appointment
 exports.addAppointment = async (req, res) => {
     try {
         // Expecting JSON body: doctor_id, user_name, user_contact, user_email, appointment_datetime, notes
@@ -41,7 +42,7 @@ exports.addAppointment = async (req, res) => {
             [doctorId, user_name, user_contact, user_email || null, dt, notes || null]
         );
 
-        // return the created appointment
+        // return Get created appointment
         const insertId = result.insertId;
         const [rows] = await pool.execute("SELECT * FROM appointments WHERE appointment_id = ?", [insertId]);
 
