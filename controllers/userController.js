@@ -1,4 +1,3 @@
-// controllers/userController.js
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 
