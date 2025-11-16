@@ -22,12 +22,7 @@ const allowed = /jpeg|jpg|png|webp/;
 const ext = path.extname(file.originalname).toLowerCase();
 }
 
-
-const upload = multer({
-storage,
-fileFilter,
-limits: { fileSize: 12 * 1024 * 1024 }
-});
+const upload = multer({ storage, fileFilter, limits: { fileSize: 12 * 1024 * 1024 }});
 
 
 module.exports = upload;
