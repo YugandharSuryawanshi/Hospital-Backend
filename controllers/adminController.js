@@ -120,7 +120,7 @@ exports.getAllAppointments = async (req, res) => {
 
 
 // Delete slide
-// Some working are pending
+// Some working are pending.
 exports.deleteSlide = async (req, res) => {
     try {
         const { id } = req.params;
