@@ -41,7 +41,7 @@ exports.addAppointment = async (req, res) => {
             [doctorId, user_name, user_contact, user_email || null, dt, notes || null]
         );
 
-        // return Get created appointment
+        // return Get created appointment using appointment_id
         const insertId = result.insertId;
         const [rows] = await pool.execute("SELECT * FROM appointments WHERE appointment_id = ?", [insertId]);
 
