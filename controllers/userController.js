@@ -20,7 +20,7 @@ exports.addAppointment = async (req, res) => {
 
         console.log("raw body:", req.body);
 
-        // basic validation
+        // basic validation check below given info are came or not
         if (!user_name || !user_contact || !appointment_datetime) {
             return res.status(400).json({ error: "user_name, user_contact and appointment_datetime are required" });
         }
