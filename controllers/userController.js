@@ -18,7 +18,7 @@ exports.addAppointment = async (req, res) => {
         // Expecting JSON body: doctor_id, user_name, user_contact, user_email, appointment_datetime, notes
         const { doctor_id, user_name, user_contact, user_email, appointment_datetime, notes } = req.body;
 
-        console.log("raw body:", req.body);
+        // console.log("raw body:", req.body);
 
         // basic validation check below given info are came or not
         if (!user_name || !user_contact || !appointment_datetime) {
