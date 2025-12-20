@@ -14,7 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads', express.static('uploads'));
 
-// DB test at startup
+// DB test at startup is On Or Not
 (async () => {
     try {
         const conn = await pool.getConnection();
