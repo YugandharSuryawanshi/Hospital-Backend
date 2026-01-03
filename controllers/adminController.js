@@ -115,6 +115,30 @@ exports.getAllAppointments = async (req, res) => {
     }
 };
 
+exports.addFacility = async (req, res) => {
+    const { facility_name, facility_desc } = req.body;
+    const facility_image = req.file ? req.file.filename : null;
+
+    try {
+        const [rows] = await pool.execute(`INSERT INTO facilities (facility_name, facility_desc, facility_image) VALUES (?, ?, ?)`,
+            [facility_name, facility_desc, facility_image]
+        );
+        res.json({ message: "Facility added successfully", facility_id: rows.insertId });
+    } catch (err) {
+        console.error("addFacility error", err);
+        res.status(500).json({ error: err.message });
+    }
+}
+
+exports.getFacilities = async (req, res) => {
+    try {
+        const [rows] = await pool.execute("SELECT * FROM facilities");
+        res.json(rows);
+    } catch (err) {
+        console.error("getFacilities error", err);
+        res.status(500).json({ error: err.message });
+    }
+}
 
 
 

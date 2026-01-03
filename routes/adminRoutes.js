@@ -20,6 +20,10 @@ router.get("/getdoctors", adminController.getAllDoctors);
 
 router.get("/appointments", adminController.getAllAppointments);
 
+router.post("/addFacility",verifyToken,isAdmin,upload.single("facility_image"),adminController.addFacility);
+
+
+
 // delete slide //working are remaining
 router.delete("/slides/:id", verifyToken, isAdmin, adminController.deleteSlide);
 
