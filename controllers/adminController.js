@@ -130,7 +130,7 @@ exports.addFacility = async (req, res) => {
     }
 }
 
-exports.getFacilities = async (req, res) => {
+exports.getAllFacilities = async (req, res) => {
     try {
         const [rows] = await pool.execute("SELECT * FROM facilities");
         res.json(rows);

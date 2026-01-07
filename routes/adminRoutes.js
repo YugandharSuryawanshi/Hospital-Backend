@@ -22,6 +22,8 @@ router.get("/appointments", adminController.getAllAppointments);
 
 router.post("/addFacility",verifyToken,isAdmin,upload.single("facility_image"),adminController.addFacility);
 
+router.get("/getAllFacilities", adminController.getAllFacilities);
+
 
 
 // delete slide //working are remaining
