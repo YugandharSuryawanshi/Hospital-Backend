@@ -24,6 +24,8 @@ router.post("/addFacility",verifyToken,isAdmin,upload.single("facility_image"),a
 
 router.get("/getAllFacilities", adminController.getAllFacilities);
 
+router.delete("/deleteFacility/:id",verifyToken,isAdmin,adminController.deleteFacility);
+
 
 
 // delete slide //working are remaining

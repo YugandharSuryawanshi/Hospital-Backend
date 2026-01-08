@@ -140,6 +140,16 @@ exports.getAllFacilities = async (req, res) => {
     }
 }
 
+exports.deleteFacility = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.execute("DELETE FROM facilities WHERE facility_id = ?", [id]);
+        res.json({ message: "Facility deleted successfully" });
+    } catch (err) {
+        console.error("deleteFacility error", err);
+        res.status(500).json({ error: err.message });
+    }
+}
 
 
 
