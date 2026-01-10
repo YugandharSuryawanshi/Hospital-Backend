@@ -115,6 +115,7 @@ exports.getAllAppointments = async (req, res) => {
     }
 };
 
+// Add Facility
 exports.addFacility = async (req, res) => {
     const { facility_name, facility_desc } = req.body;
     const facility_image = req.file ? req.file.filename : null;
@@ -130,6 +131,7 @@ exports.addFacility = async (req, res) => {
     }
 }
 
+// Get all facilities
 exports.getAllFacilities = async (req, res) => {
     try {
         const [rows] = await pool.execute("SELECT * FROM facilities");
@@ -140,6 +142,7 @@ exports.getAllFacilities = async (req, res) => {
     }
 }
 
+// Delete facility
 exports.deleteFacility = async (req, res) => {
     try {
         const { id } = req.params;
