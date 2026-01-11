@@ -156,6 +156,7 @@ exports.deleteFacility = async (req, res) => {
 
 
 
+
 // Delete slide
 // Some working are pending.
 exports.deleteSlide = async (req, res) => {
