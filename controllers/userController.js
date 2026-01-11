@@ -51,3 +51,13 @@ exports.addAppointment = async (req, res) => {
         return res.status(500).json({ error: err.message || "Server error" });
     }
 };
+
+exports.getFacilities = async (req, res) => {
+    try {
+        const [rows] = await pool.execute("SELECT * FROM facilities");
+        res.json(rows);
+    } catch (err) {
+        console.error("getFacilities error", err);
+        res.status(500).json({ error: err.message });
+    }
+}
