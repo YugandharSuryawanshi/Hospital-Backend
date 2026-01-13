@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs');
 exports.getSlides = async (req, res) => {
     try {
         const [rows] = await pool.execute("SELECT * FROM slides");
+        console.log(rows);
+        
         res.json(rows);
     } catch (err) {
         console.error("getSlides error", err);
