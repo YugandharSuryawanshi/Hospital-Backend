@@ -5,8 +5,6 @@ const bcrypt = require('bcryptjs');
 exports.getSlides = async (req, res) => {
     try {
         const [rows] = await pool.execute("SELECT * FROM slides");
-        console.log(rows);
-        
         res.json(rows);
     } catch (err) {
         console.error("getSlides error", err);
@@ -17,17 +15,13 @@ exports.getSlides = async (req, res) => {
 // Add Appointment
 exports.addAppointment = async (req, res) => {
     try {
-        // Expecting JSON body: doctor_id, user_name, user_contact, user_email, appointment_datetime, notes
         const { doctor_id, user_name, user_contact, user_email, appointment_datetime, notes } = req.body;
-
-        // console.log("raw body:", req.body); // For checking data are came or not?
 
         // basic validation check below given info are came or not
         if (!user_name || !user_contact || !appointment_datetime) {
             return res.status(400).json({ error: "user_name, user_contact and appointment_datetime are required" });
         }
 
-        // normalize doctor id
         const doctorId = doctor_id ? parseInt(doctor_id, 10) : null;
 
         // convert datetime-local (YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS) -> MySQL DATETIME "YYYY-MM-DD HH:MM:SS"
@@ -54,6 +48,7 @@ exports.addAppointment = async (req, res) => {
     }
 };
 
+// Get Facilities
 exports.getFacilities = async (req, res) => {
     try {
         const [rows] = await pool.execute("SELECT * FROM facilities");
@@ -63,3 +58,37 @@ exports.getFacilities = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 }
+
+// Get Doctors
+exports.getDoctors = async (req, res) => {
+    try {
+        const [rows] = await pool.execute("SELECT * FROM doctors");
+        res.json(rows);
+    } catch (err) {
+        console.error("getDoctors error", err);
+        res.status(500).json({ error: err.message });
+    }
+}
+
+// Get appointment
+exports.addAppointment = async (req, res) => {
+    try {
+        const { doctor_id, user_name, user_contact, user_email, user_address, appointment_date,
+            appointment_time, appointment_datetime, notes } = req.body;
+
+        const [result] = await pool.execute(`INSERT INTO appointments
+            (doctor_id, user_name, user_contact, user_email, appointment_datetime, address, appointment_date, appointment_time, notes, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [ doctor_id, user_name, user_contact, user_email, appointment_datetime, user_address, appointment_date, appointment_time, notes, 'Pending' ] );
+
+        res.status(201).json({
+            success: true,
+            message: "Appointment Added Successfully",
+            appointment_id: result.insertId
+        });
+
+    } catch (err) {
+        console.error("Add Appointment Error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+};

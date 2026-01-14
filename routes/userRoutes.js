@@ -5,6 +5,8 @@ const userController = require('../controllers/userController');
 router.get("/slides", userController.getSlides);
 router.post("/addAppointment", userController.addAppointment);
 router.get("/getFacilities", userController.getFacilities);
+router.get("/getdoctors", userController.getDoctors);
+router.post("/addAppointment", userController.addAppointment);
 
 // In future need some routes for user if need just uncomment
 // user profile & uploads //in future need to add user also login that time

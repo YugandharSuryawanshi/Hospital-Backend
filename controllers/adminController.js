@@ -154,6 +154,23 @@ exports.deleteFacility = async (req, res) => {
     }
 }
 
+// Update Facility
+exports.updateFacility = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { facility_name, facility_desc } = req.body;
+        const facility_image = req.file ? req.file.filename : null;
+
+        await pool.execute(`UPDATE facilities SET facility_name = ?, facility_desc = ?, facility_image = ? WHERE facility_id = ?`,
+            [facility_name, facility_desc, facility_image, id]
+        );
+        res.json({ message: "Facility updated successfully" });
+    } catch (err) {
+        console.error("updateFacility error", err);
+        res.status(500).json({ error: err.message });
+    }
+}
+
 
 
 
