@@ -8,6 +8,8 @@ const upload = multer({ dest: "uploads/" });
 
 router.get("/users", verifyToken, isAdmin, adminController.getAllUsers);
 
+router.get('/getAllUsers', verifyToken, isAdmin, adminController.getUsers);
+
 router.put("/profile",verifyToken,isAdmin,upload.single("image"),adminController.updateUser);
 
 router.post("/slides",verifyToken,isAdmin,upload.single("slideImage"),adminController.addSlides);

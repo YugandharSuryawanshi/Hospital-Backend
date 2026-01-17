@@ -1,6 +1,54 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 
+// Get User
+exports.getUserById = async (req, res) => {
+    try {
+        const [rows] = await pool.execute("SELECT * FROM users WHERE user_id=?",[req.params.id]);
+        res.json(rows[0]);
+        
+    } catch (err) {
+        console.error("getUsers error", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Update User
+exports.updateUser = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const name = req.body.name;
+        const email = req.body.email;
+        const phone = req.body.phone;
+        const address = req.body.address;
+        const profile = req.file ? req.file.filename : null;
+        
+        if (req.file) {
+            // update with image
+            await pool.execute(
+                "UPDATE users SET user_name = ?, user_email = ?, user_phone = ?, user_address = ?, user_profile = ? WHERE user_id = ?",
+                [name, email, phone, address,  profile, userId]
+            );
+        } else {
+            // update without image
+            await pool.execute(
+                "UPDATE users SET user_name = ?, user_email = ?, user_phone = ?, user_address = ? WHERE user_id = ?",
+                [name, email, phone, address, userId]
+            );
+        }
+
+        const [rows] = await pool.execute(
+            "SELECT user_id, user_name, user_email, user_phone, user_address, user_profile FROM users WHERE user_id = ?",
+            [userId]
+        );
+
+        res.json({ message: "Profile updated", user: rows[0] });
+    } catch (err) {
+        console.error("updateUser error", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
 // Get SLides
 exports.getSlides = async (req, res) => {
     try {
@@ -92,3 +140,7 @@ exports.addAppointment = async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 };
+
+
+
+

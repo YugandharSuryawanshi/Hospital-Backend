@@ -6,7 +6,8 @@ require('dotenv').config();
 // Register Route
 exports.register = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body || {};
+        const { name, email, phone, address , password, role } = req.body || {};
+        
         const userName = name || req.body.user_name;
         const userEmail = email || req.body.user_email;
         const userPassword = password || req.body.user_password;
@@ -23,8 +24,8 @@ exports.register = async (req, res) => {
         const imagePath = req.file ? `uploads/${req.file.filename}` : null;
 
         const [result] = await pool.execute(
-            'INSERT INTO users (user_name, user_email, user_password, user_profile, role) VALUES (?, ?, ?, ?, ?)',
-            [userName, userEmail, hashed, imagePath, role || 'user']
+            'INSERT INTO users (user_name, user_email,user_phone, user_address, user_password, user_profile, role) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [userName, userEmail, phone, address, hashed, imagePath, role || 'user']
         );
 
         const insertId = result.insertId;
@@ -89,3 +90,4 @@ exports.me = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
