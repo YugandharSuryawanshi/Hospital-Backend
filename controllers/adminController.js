@@ -174,7 +174,7 @@ exports.updateFacility = async (req, res) => {
 // Get all users for dashboard
 exports.getUsers = async (req, res) => {
     try {
-        const [rows] = await pool.execute("SELECT * FROM users");
+        const [rows] = await pool.execute("SELECT * FROM users WHERE role = 'user'");
         res.status(200).json(rows);
     } catch (err) {
         console.error("❌ getAllUsers error:", err);

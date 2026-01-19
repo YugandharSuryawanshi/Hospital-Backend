@@ -6,7 +6,7 @@ require('dotenv').config();
 // Register Route
 exports.register = async (req, res) => {
     try {
-        const { name, email, phone, address , password, role } = req.body || {};
+        const { name, email, phone, address , password, age , gender , role } = req.body || {};
         
         const userName = name || req.body.user_name;
         const userEmail = email || req.body.user_email;
@@ -24,13 +24,13 @@ exports.register = async (req, res) => {
         const imagePath = req.file ? `uploads/${req.file.filename}` : null;
 
         const [result] = await pool.execute(
-            'INSERT INTO users (user_name, user_email,user_phone, user_address, user_password, user_profile, role) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [userName, userEmail, phone, address, hashed, imagePath, role || 'user']
+            'INSERT INTO users (user_name, user_email,user_phone, user_age, user_gender , user_address, user_password, user_profile, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [userName, userEmail, phone, age, gender, address, hashed, imagePath, role || 'user']
         );
 
         const insertId = result.insertId;
         const [rows] = await pool.execute(
-            'SELECT user_id, user_name, user_email, user_profile, role, created_at FROM users WHERE user_id = ?',
+            'SELECT user_id, user_name, user_phone, user_address, user_age, user_gender, user_email, user_profile, role, created_at FROM users WHERE user_id = ?',
             [insertId]
         );
 
