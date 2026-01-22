@@ -91,6 +91,24 @@ exports.addDoctor = async (req, res) => {
     }
 };
 
+// Edit Doctor
+exports.editDoctor = async (req, res) => {
+    try {
+        const doctorId = req.params.id;
+        const { dr_name, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_address } = req.body;
+        const dr_photo = req.file ? req.file.filename : null;
+
+        await pool.execute(
+            `UPDATE doctors SET dr_name = ?, dr_certificate = ?, dr_position = ?, dr_speciality = ?, dr_contact = ?, dr_email = ?, dr_photo = ?, dr_address = ? WHERE doctor_id = ?`,
+            [dr_name, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_photo, dr_address, doctorId]
+        );
+        res.json({ message: "Doctor updated successfully" });
+    } catch (err) {
+        console.error("editDoctor error", err);
+        res.status(500).json({ error: err.message });
+    }
+}
+
 // Get all doctors
 exports.getAllDoctors = async (req, res) => {
     try {
@@ -101,6 +119,18 @@ exports.getAllDoctors = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+// Delete Doctor
+exports.deleteDoctor = async (req, res) => {
+    try {
+        const doctorId = req.params.id;
+        await pool.execute("DELETE FROM doctors WHERE doctor_id = ?", [doctorId]);
+        res.json({ message: "Doctor deleted successfully" });
+    } catch (err) {
+        console.error("deleteDoctor error", err);
+        res.status(500).json({ error: err.message });
+    }
+}
 
 // Get all appointments
 exports.getAllAppointments = async (req, res) => {
@@ -182,6 +212,46 @@ exports.getUsers = async (req, res) => {
     }
 };
 
+// Get User By ID
+exports.getUserById = async (req, res) => {
+    try {
+        const [rows] = await pool.execute("SELECT * FROM users WHERE user_id=?", [req.params.id]);
+        res.json(rows[0]);
+
+    } catch (err) {
+        console.error("getUsers error", err);
+        res.status(500).json({ error: err.message });
+    }
+}
+
+// Update Patient By Admin
+exports.updatePatient = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { user_name, user_email, user_phone, user_address, user_age, user_gender,} = req.body;
+
+        await pool.execute(`UPDATE users SET user_name = ?, user_email = ?, user_phone = ?, user_address = ?, user_age = ?,
+            user_gender = ? WHERE user_id = ?`,[user_name,user_email,user_phone,user_address,user_age,user_gender,id,]);
+
+        res.status(200).json({success: true, message: "Patient updated successfully"});
+    } catch (err) {
+        console.error("updatePatient error", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Delete Patient
+exports.deletePatient = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.execute("DELETE FROM users WHERE user_id = ?", [id]);
+        res.json({ message: "Patient deleted successfully" });
+    } catch (err) {
+        console.error("deletePatient error", err);
+        res.status(500).json({ error: err.message });
+    }
+};
 
 
 
