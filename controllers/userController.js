@@ -60,6 +60,17 @@ exports.getSlides = async (req, res) => {
     }
 };
 
+// Get Some Doctors
+exports.getSomeDoctors = async (req, res) => {
+    try {
+        const [rows] = await pool.execute("SELECT * FROM doctors LIMIT 6");
+        res.json(rows);
+    } catch (err) {
+        console.error("getSomeDoctors error", err);
+        res.status(500).json({ error: err.message });
+    }
+}
+
 // Add Appointment
 exports.addAppointment = async (req, res) => {
     try {

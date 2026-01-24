@@ -9,6 +9,7 @@ router.get("/slides", userController.getSlides);
 router.post("/addAppointment", userController.addAppointment);
 router.get("/getFacilities", userController.getFacilities);
 router.get("/getdoctors", userController.getDoctors);
+router.get("/getSomeDoctors", userController.getSomeDoctors);
 router.post("/addAppointment", userController.addAppointment);
 router.get("/profile/:id", userController.getUserById);
 router.put("/updateProfile/:id", upload.single("image"), userController.updateUser);

@@ -24,7 +24,7 @@ router.get("/getdoctors", adminController.getAllDoctors);
 
 router.delete("/deleteDoctor/:id",verifyToken,isAdmin,adminController.deleteDoctor);
 
-router.put("/updateDoctor/:id",verifyToken,isAdmin,upload.single("dr_photo"),adminController.editDoctor);
+router.put("/update_Doctor/:id",verifyToken,isAdmin,upload.single("dr_photo"),adminController.updateDoctor);
 
 router.get("/appointments", adminController.getAllAppointments);
 
@@ -40,6 +40,14 @@ router.put("/updateFacility/:id",verifyToken,isAdmin,upload.single("facility_ima
 router.put("/updateUser/:id",verifyToken,isAdmin,adminController.updatePatient);
 
 router.delete("/deleteUser/:id",verifyToken,isAdmin,adminController.deletePatient);
+
+router.post('/addDepartment',verifyToken,isAdmin,adminController.addDepartment);
+
+router.get('/getDepartments',adminController.getDepartments);
+
+router.put('/updateDepartment/:id',verifyToken,isAdmin,adminController.updateDepartment);
+
+router.delete('/deleteDepartment/:id',verifyToken,isAdmin,adminController.deleteDepartment);
 
 
 
