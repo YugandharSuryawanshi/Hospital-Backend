@@ -97,17 +97,18 @@ exports.updateDoctor = async (req, res) => {
         const doctorId = req.params.id;
         const { dr_name, dr_gender, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_address, dr_experience, department_id, dr_fee, dr_about, dr_status } = req.body;
         const dr_photo = req.file ? req.file.filename : null;
-        
+
         if (dr_photo === null) {
             await pool.execute(
-                `UPDATE doctors SET dr_name = ?, dr_gender = ?, dr_certificate = ?, dr_position = ?, dr_experience, dr_speciality = ?, department_id, dr_contact = ?, dr_fee = ?, dr_email = ?, dr_address = ?, dr_about = ?, dr_status WHERE doctor_id = ?`,
+                `UPDATE doctors SET dr_name = ?, dr_gender = ?, dr_certificate = ?, dr_position = ?, dr_experience = ?, dr_speciality = ?, department_id = ?, dr_contact = ?, dr_fee = ?, dr_email = ?, dr_address = ?, dr_about = ?, dr_status = ? WHERE doctor_id = ?`,
                 [dr_name, dr_gender, dr_certificate, dr_position, dr_experience, dr_speciality, department_id, dr_contact, dr_fee, dr_email, dr_address, dr_about, dr_status, doctorId]
             );
             res.json({ message: "Doctor updated successfully" });
+
         }
         else {
             await pool.execute(
-                `UPDATE doctors SET dr_name = ?, dr_gender, dr_certificate = ?, dr_position = ?, dr_experience, dr_speciality = ?, department_id, dr_contact = ?, dr_fee = ?, dr_email = ?, dr_photo = ?, dr_address = ?, dr_about = ?, dr_status WHERE doctor_id = ?`,
+                `UPDATE doctors SET dr_name = ?, dr_gender = ?, dr_certificate = ?, dr_position = ?, dr_experience = ?, dr_speciality = ?, department_id = ?, dr_contact = ?, dr_fee = ?, dr_email = ?, dr_photo = ?, dr_address = ?, dr_about = ?, dr_status = ? WHERE doctor_id = ?`,
                 [dr_name, dr_gender, dr_certificate, dr_position, dr_experience, dr_speciality, department_id, dr_contact, dr_fee, dr_email, dr_photo, dr_address, dr_about, dr_status, doctorId]
             );
             res.json({ message: "Doctor updated successfully" });
@@ -121,10 +122,10 @@ exports.updateDoctor = async (req, res) => {
 // Get all doctors
 exports.getAllDoctors = async (req, res) => {
     try {
-        const [rows] = await pool.execute("SELECT * FROM doctors");
+        const [rows] = await pool.execute(` SELECT d.doctor_id, d.dr_name, d.dr_speciality, d.dr_position, d.dr_contact,
+            d.dr_email, d.dr_gender, d.dr_experience, d.dr_fee, d.dr_photo, d.dr_status, dept.department_name FROM doctors d
+            LEFT JOIN departments dept ON d.department_id = dept.department_id ORDER BY d.doctor_id DESC`);
         res.json(rows);
-        console.log(rows);
-        
     } catch (err) {
         console.error("getAllDoctors error", err);
         res.status(500).json({ error: err.message });
