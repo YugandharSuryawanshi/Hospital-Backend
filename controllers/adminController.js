@@ -77,12 +77,12 @@ exports.getSlides = async (req, res) => {
 // Add doctor
 exports.addDoctor = async (req, res) => {
     try {
-        const { dr_name, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_address } = req.body;
+        const { dr_name, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_address, dr_gender, dr_experience, department_id, dr_fee, dr_about, dr_status } = req.body;
         const dr_photo = req.file ? req.file.filename : null;
 
         const [rows] = await pool.execute(
-            `INSERT INTO doctors (dr_name, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_photo, dr_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [dr_name, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_photo, dr_address]
+            `INSERT INTO doctors (dr_name, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_photo, dr_address, dr_gender, dr_experience, department_id, dr_fee, dr_about, dr_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [dr_name, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_photo, dr_address, dr_gender, dr_experience, department_id, dr_fee, dr_about, dr_status]
         );
         res.json({ message: "Doctor added successfully", doctor_id: rows.insertId });
     } catch (err) {
@@ -122,9 +122,9 @@ exports.updateDoctor = async (req, res) => {
 // Get all doctors
 exports.getAllDoctors = async (req, res) => {
     try {
-        const [rows] = await pool.execute(` SELECT d.doctor_id, d.dr_name, d.dr_speciality, d.dr_position, d.dr_contact,
-            d.dr_email, d.dr_gender, d.dr_experience, d.dr_fee, d.dr_photo, d.dr_status, dept.department_name FROM doctors d
-            LEFT JOIN departments dept ON d.department_id = dept.department_id ORDER BY d.doctor_id DESC`);
+        const [rows] = await pool.execute(`SELECT d.doctor_id, d.dr_name, d.dr_speciality, d.dr_position, d.dr_contact, d.dr_email,
+    d.dr_gender, d.dr_experience, d.dr_fee, d.dr_photo, d.dr_status, d.dr_certificate, d.dr_address, d.dr_about, dept.department_name
+    FROM doctors d LEFT JOIN departments dept ON d.department_id = dept.department_id ORDER BY d.doctor_id DESC`);
         res.json(rows);
     } catch (err) {
         console.error("getAllDoctors error", err);
