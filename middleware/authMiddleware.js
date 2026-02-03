@@ -23,4 +23,10 @@ const isAdmin = (req, res, next) => {
     next();
 };
 
-module.exports = { verifyToken, isAdmin };
+const isUser = (req, res, next) => {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'user') return res.status(403).json({ message: 'Users only' });
+    next();
+};
+
+module.exports = { verifyToken, isAdmin, isUser };
