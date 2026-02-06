@@ -1,0 +1,78 @@
+
+____________________________________________________________________________
+I create table notification and this query is :-
+CREATE TABLE notifications (
+    notification_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    title VARCHAR(255),
+    message TEXT,
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_id (user_id),
+    CONSTRAINT fk_notifications_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+
+
+
+userAxios.js
+import axios from "axios";
+
+const userAxios = axios.create({
+    baseURL: "http://localhost:4000/api/user",
+});
+
+userAxios.interceptors.request.use((config) => {
+    const token = localStorage.getItem("userToken");
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+userAxios.interceptors.response.use(
+    (res) => res,
+    (err) => {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+            localStorage.removeItem("userToken");
+            localStorage.removeItem("userUser");
+            window.location.href = "/login";
+        }
+        return Promise.reject(err);
+    }
+);
+
+export default userAxios;
+
+
+doctorAxios.js
+import axios from "axios";
+
+const doctorAxios = axios.create({
+    baseURL: "http://localhost:4000/api/doctor",
+});
+
+doctorAxios.interceptors.request.use((config) => {
+    const token = localStorage.getItem("doctorToken");
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+doctorAxios.interceptors.response.use(
+    (res) => res,
+    (err) => {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+            localStorage.removeItem("doctorToken");
+            localStorage.removeItem("doctorUser");
+            window.location.href = "/doctor/login";
+        }
+        return Promise.reject(err);
+    }
+);
+
+export default doctorAxios;

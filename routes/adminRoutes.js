@@ -6,6 +6,8 @@ const multer = require("multer");
 
 const upload = multer({ dest: "uploads/" });
 
+router.get("/dashboard-counts", verifyToken, isAdmin, adminController.getDashboardCounts);
+
 router.get("/users", verifyToken, isAdmin, adminController.getAllUsers);
 
 router.get('/getAllUsers', verifyToken, isAdmin, adminController.getUsers);
@@ -20,7 +22,7 @@ router.get("/slides", adminController.getSlides);
 
 router.post("/doctors",verifyToken,isAdmin,upload.single("dr_photo"),adminController.addDoctor);
 
-router.get("/getdoctors", adminController.getAllDoctors);
+router.get("/getdoctors", verifyToken,isAdmin, adminController.getAllDoctors);
 
 router.delete("/deleteDoctor/:id",verifyToken,isAdmin,adminController.deleteDoctor);
 
@@ -28,9 +30,11 @@ router.put("/update_Doctor/:id",verifyToken,isAdmin,upload.single("dr_photo"),ad
 
 router.get("/appointments", adminController.getAllAppointments);
 
+router.put("/updateAppointment/:id",adminController.updateAppointment);
+
 router.post("/addFacility",verifyToken,isAdmin,upload.single("facility_image"),adminController.addFacility);
 
-router.get("/getAllFacilities", adminController.getAllFacilities);
+router.get("/getAllFacilities", verifyToken,isAdmin, adminController.getAllFacilities);
 
 router.delete("/deleteFacility/:id",verifyToken,isAdmin,adminController.deleteFacility);
 
@@ -43,7 +47,7 @@ router.delete("/deleteUser/:id",verifyToken,isAdmin,adminController.deletePatien
 
 router.post('/addDepartment',verifyToken,isAdmin,adminController.addDepartment);
 
-router.get('/getDepartments',adminController.getDepartments);
+router.get('/getDepartments',verifyToken,isAdmin, adminController.getDepartments);
 
 router.put('/updateDepartment/:id',verifyToken,isAdmin,adminController.updateDepartment);
 

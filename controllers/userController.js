@@ -170,12 +170,42 @@ exports.getDoctorsByDepartment = async (req, res) => {
 exports.getMyAppointments = async (req, res) => {
     try {
         const user_id = req.user.id; //from jwt
-        const [rows] = await pool.execute(`SELECT a.appointment_id, a.appointment_date, a.appointment_time, a.status, a.notes,
-                d.dr_name, d.dr_speciality FROM appointments a
-            JOIN doctors d ON d.doctor_id = a.doctor_id WHERE a.user_id = ? ORDER BY a.created_at DESC`, [user_id]);
+        const [rows] = await pool.execute(`SELECT a.appointment_id, DATE_FORMAT(a.appointment_date, '%Y-%m-%d') AS appointment_date, a.appointment_time, a.status, a.notes, d.dr_name,
+            d.dr_speciality FROM appointments a JOIN doctors d ON d.doctor_id = a.doctor_id WHERE a.user_id = ?
+            ORDER BY a.created_at DESC`, [user_id]);
         res.json(rows);
     } catch (err) {
         console.error("Get Appointments Error:", err);
         res.status(500).json({ message: "Failed to fetch appointments" });
     }
 };
+
+// Get Notifications
+exports.getNotifications = async (req, res) => {
+    const [rows] = await pool.execute(`SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC`, [req.user.id]);
+    res.json(rows);
+};
+
+// Mark Notifications Read
+exports.markAsRead = async (req, res) => {
+    await pool.execute(`UPDATE notifications SET is_read = 1 WHERE user_id = ?`, [req.user.id]);
+    res.json({ message: "Notifications marked as read" });
+};
+
+// Delete Notification from user
+exports.deleteNotification = async (req, res) => {
+    const { id } = req.params;
+    await pool.execute(`DELETE FROM notifications WHERE notification_id = ? AND user_id = ?`, [id, req.user.id]);
+    res.json({ message: "Notification deleted" });
+};
+
+// Get Unread Notification Count
+exports.unreadCount = async (req, res) => {
+    const userId = req.user.id;
+    const [[row]] = await pool.execute(
+        `SELECT COUNT(*) AS count FROM notifications WHERE user_id=? AND is_read=0`,
+        [userId]
+    );
+    res.json({ count: row.count });
+};
+

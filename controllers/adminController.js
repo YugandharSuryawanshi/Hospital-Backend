@@ -1,5 +1,35 @@
 const pool = require("../config/db");
 
+// Get dashboard counts
+exports.getDashboardCounts = async (req, res) => {
+    try {
+        const [[users], [slides], [doctors], [appointments], [facilities], [departments]] = await Promise.all([
+            pool.execute("SELECT COUNT(*) AS count FROM users WHERE role='user'"),
+            pool.execute("SELECT COUNT(*) AS count FROM slides"),
+            pool.execute("SELECT COUNT(*) AS count FROM doctors"),
+            pool.execute("SELECT COUNT(*) AS count FROM appointments"),
+            pool.execute("SELECT COUNT(*) AS count FROM facilities"),
+            pool.execute("SELECT COUNT(*) AS count FROM departments")
+        ]);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                users: users[0].count,
+                slides: slides[0].count,
+                doctors: doctors[0].count,
+                appointments: appointments[0].count,
+                facilities: facilities[0].count,
+                departments: departments[0].count
+            }
+        });
+
+    } catch (error) {
+        console.error("getDashboardCounts error:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
 // Get all users
 exports.getAllUsers = async (req, res) => {
     try {
@@ -122,7 +152,7 @@ exports.updateDoctor = async (req, res) => {
 // Get all doctors
 exports.getAllDoctors = async (req, res) => {
     try {
-        const [rows] = await pool.execute(`SELECT d.doctor_id, d.dr_name, d.dr_speciality, d.dr_position, d.dr_contact, d.dr_email,
+        const [rows] = await pool.execute(`SELECT d.doctor_id, d.department_id, d.dr_name, d.dr_speciality, d.dr_position, d.dr_contact, d.dr_email,
     d.dr_gender, d.dr_experience, d.dr_fee, d.dr_photo, d.dr_status, d.dr_certificate, d.dr_address, d.dr_about, dept.department_name
     FROM doctors d LEFT JOIN departments dept ON d.department_id = dept.department_id ORDER BY d.doctor_id DESC`);
         res.json(rows);
@@ -148,11 +178,42 @@ exports.deleteDoctor = async (req, res) => {
 exports.getAllAppointments = async (req, res) => {
     try {
         const [rows] = await pool.execute(`SELECT a.appointment_id, a.user_name, a.user_contact, a.user_email, a.appointment_datetime,
-        a.notes, a.status, a.doctor_id, d.doctor_id, d.dr_name, d.dr_position, d.dr_certificate, d.dr_photo FROM appointments AS a JOIN 
-        doctors AS d ON a.doctor_id = d.doctor_id ORDER BY a.appointment_id DESC`);
+            a.appointment_date, a.appointment_time,a.notes, a.status, a.doctor_id, d.doctor_id, d.dr_name, d.dr_position, d.dr_certificate,
+            d.dr_photo FROM appointments AS a JOIN doctors AS d ON a.doctor_id = d.doctor_id ORDER BY a.appointment_id DESC`);
         res.json(rows);
     } catch (err) {
         console.error("getAllAppointments error", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Update Appointments
+exports.updateAppointment = async (req, res) => {
+    try {
+        const appointmentId = req.params.id;
+        const { appointment_date, appointment_time, status, notes } = req.body;
+        const appointment_datetime = `${appointment_date} ${appointment_time}:00`;
+
+        // Update Appointment
+        await pool.execute(`UPDATE appointments SET appointment_date = ?, appointment_datetime = ?, appointment_time = ?, status = ?, notes = ? WHERE appointment_id = ?`,
+            [appointment_date, appointment_datetime, appointment_time, status, notes, appointmentId]);
+
+        // Get user_id of appointment
+        const [[appointment]] = await pool.execute("SELECT user_id FROM appointments WHERE appointment_id = ?", [appointmentId]);
+
+        // Create notification
+        await pool.execute(`INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`,
+            [appointment.user_id, "Appointment Updated", `Your appointment has been ${status}`]);
+
+        // Real Time EMIT
+        global.io.to(`user_${appointment.user_id}`).emit("new-notification", {
+            title: "Appointment Updated",
+            message: `Your appointment status is now ${status}`
+        });
+
+        res.json({ message: "Appointment updated successfully..." });
+    } catch (err) {
+        console.error("updateAppointment error", err);
         res.status(500).json({ error: err.message });
     }
 };

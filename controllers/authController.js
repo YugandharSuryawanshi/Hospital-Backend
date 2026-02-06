@@ -6,8 +6,8 @@ require('dotenv').config();
 // Register Route
 exports.register = async (req, res) => {
     try {
-        const { name, email, phone, address , password, age , gender , role } = req.body || {};
-        
+        const { name, email, phone, address, password, age, gender, role } = req.body || {};
+
         const userName = name || req.body.user_name;
         const userEmail = email || req.body.user_email;
         const userPassword = password || req.body.user_password;
@@ -49,10 +49,7 @@ exports.login = async (req, res) => {
 
         if (!userEmail || !userPassword) return res.status(400).json({ message: 'Email and password required' });
 
-        const [rows] = await pool.execute(
-            'SELECT user_id, user_name, user_email, user_password, user_profile, role FROM users WHERE user_email = ?',
-            [userEmail]
-        );
+        const [rows] = await pool.execute('SELECT user_id, user_name, user_email, user_password, user_profile, role FROM users WHERE user_email = ?', [userEmail]);
         if (!rows.length) return res.status(400).json({ message: 'Invalid credentials' });
 
         const user = rows[0];
@@ -82,7 +79,7 @@ exports.login = async (req, res) => {
 exports.me = async (req, res) => {
     try {
         if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
-        const [rows] = await pool.execute('SELECT user_id, user_name, user_email, user_profile, role, created_at FROM users WHERE user_id = ?',[req.user.id]);
+        const [rows] = await pool.execute('SELECT user_id, user_name, user_email, user_profile, role, created_at FROM users WHERE user_id = ?', [req.user.id]);
         if (!rows.length) return res.status(404).json({ message: 'User not found' });
         res.json({ user: rows[0] });
     } catch (err) {
