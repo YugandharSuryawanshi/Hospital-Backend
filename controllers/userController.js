@@ -94,42 +94,147 @@ exports.getDoctors = async (req, res) => {
 }
 
 // Get/Add Appointment
+// exports.addAppointment = async (req, res) => {
+//     try {
+//         const user_id = req.user.id; // get from jwt
+//         const { doctor_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time, notes } = req.body;
+
+//         //Check (same doctor, same date, same time)
+//         const [alreadyExisted] = await pool.execute(`SELECT appointment_id FROM appointments WHERE doctor_id = ? AND appointment_date = ?
+//             AND appointment_time = ? AND status != 'Cancelled'`,
+//             [doctor_id, appointment_date, appointment_time]);
+
+//         if (alreadyExisted.length > 0) {
+//             return res.status(409).json({
+//                 success: false,
+//                 message: "This time slot is not available for this doctor. Please choose another time."
+//             });
+//         }
+
+//         //Create datetime in backend
+//         const appointment_datetime = `${appointment_date} ${appointment_time}:00`;
+
+//         // Insert Appointment
+//         const [result] = await pool.execute(`INSERT INTO appointments(doctor_id,user_id,user_name,user_contact,user_email,address,
+//             appointment_date,appointment_time,appointment_datetime,notes,status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+//             [doctor_id, user_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time, appointment_datetime,
+//                 notes, 'Pending']);
+
+//         res.status(201).json({
+//             success: true, message: "Your appointment request has been submitted Successfully..!. Please wait for hospital approval.",
+//             appointment_id: result.insertId
+//         });
+
+//     } catch (err) {
+//         console.error("Add Appointment Error:", err);
+//         res.status(500).json({ success: false, message: "Something went wrong. Please try again later." });
+//     }
+// };
+
 exports.addAppointment = async (req, res) => {
     try {
-        const user_id = req.user.id; // get from jwt
-        const { doctor_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time, notes } = req.body;
+        const user_id = req.user.id;
 
-        //Check (same doctor, same date, same time)
-        const [alreadyExisted] = await pool.execute(`SELECT appointment_id FROM appointments WHERE doctor_id = ? AND appointment_date = ?
-            AND appointment_time = ? AND status != 'Cancelled'`,
-            [doctor_id, appointment_date, appointment_time]);
+        const { doctor_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time, notes,
+            paymentMode } = req.body;
+        const visit_type = "offline";
+        const payment_status = "pending";
+        const doctor = await pool.execute("SELECT * FROM doctors WHERE doctor_id = ?", [doctor_id]);
+        const dr_fee = doctor[0].dr_fee;
+
+        console.log('Came Info towards Frontend :- '+req.body);
+        console.log('Book appointment user id :- '+req.user.id);
+        console.log('Book appointment user id :- '+req.user.user_id);
+        console.log('Book appointment doctor id :- '+doctor_id);
+        console.log('Book appointment user name :- '+user_name);
+        console.log('Book appointment user contact :- '+user_contact);
+        console.log('Book appointment user email :- '+user_email);
+        console.log('Book appointment user address :- '+user_address);
+        console.log('Book appointment date :- '+appointment_date);
+        console.log('Book appointment time :- '+appointment_time);
+        console.log('Book appointment notes :- '+notes);
+        console.log('Book appointment dr fee :- '+dr_fee);
+        console.log('Book appointment payment mode :- '+paymentMode);
+        console.log('Book appointment visit type :- '+visit_type);
+        console.log('Book appointment payment status :- '+payment_status);
+        
+        
+
+        // 1️⃣ check slot
+        const [alreadyExisted] = await pool.execute(`SELECT * FROM appointments WHERE doctor_id=? AND appointment_date=? 
+            AND appointment_time=? AND status!='Cancelled'`, [doctor_id, appointment_date, appointment_time]);
 
         if (alreadyExisted.length > 0) {
             return res.status(409).json({
                 success: false,
-                message: "This time slot is not available for this doctor. Please choose another time."
+                message: "This slot already booked. Select another after 5 min time."
             });
         }
 
-        //Create datetime in backend
+        // 2️⃣ generate token number (per doctor per day)
+        const [lastToken] = await pool.execute(`SELECT IFNULL(MAX(token_number),0) as last FROM appointments
+            WHERE doctor_id=? AND appointment_date=?`, [doctor_id, appointment_date]);
+        console.log('Last token is :- ' + lastToken);
+
+        const token_number = lastToken[0].last + 1;
+
+        console.log('Token number is :- ' + token_number);
+
         const appointment_datetime = `${appointment_date} ${appointment_time}:00`;
 
-        // Insert Appointment
-        const [result] = await pool.execute(`INSERT INTO appointments(doctor_id,user_id,user_name,user_contact,user_email,address,
-            appointment_date,appointment_time,appointment_datetime,notes,status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [doctor_id, user_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time, appointment_datetime,
-                notes, 'Pending']);
+        // 3️⃣ create appointment
+    //     const [result] = await pool.execute(`INSERT INTO appointments (doctor_id,user_id,user_name,user_contact,user_email,address,
+    //    appointment_date,appointment_time,appointment_datetime,
+    //    notes,status,visit_type,token_number,payment_mode, payment_status)
+    //   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    //         [
+    //             doctor_id,
+    //             user_id,
+    //             user_name,
+    //             user_contact,
+    //             user_email,
+    //             user_address,
+    //             appointment_date,
+    //             appointment_time,
+    //             appointment_datetime,
+    //             notes,
+    //             "Pending",
+    //             visit_type || "offline",
+    //             token_number,
+    //             paymentMode,
+    //             payment_status
+    //         ]
+    //     );
 
-        res.status(201).json({
-            success: true, message: "Your appointment request has been submitted Successfully..!. Please wait for hospital approval.",
-            appointment_id: result.insertId
-        });
+        // const appointment_id = result.insertId;
+
+        // 4️⃣ create bill (consultation fee)
+        const consultation_fee = dr_fee; // later dynamic from doctor table
+
+        // if (result) {
+        //     const [bill] = await pool.execute(
+        //     `INSERT INTO bills (patient_id, reference_type, reference_id, total_amount, final_amount) VALUES (?, 'appointment', ?, ?, ?)`,
+        //     [user_id, appointment_id, consultation_fee, consultation_fee]
+        // );
+        // res.status(201).json({
+        //     success: true,
+        //     message: "Appointment booked..",
+        //     appointment_id,
+        //     bill_id: bill.insertId,
+        //     token_number
+        // });
+        // }
+        // else {
+        //     res.status(500).json({ success: false, message: "Something went wrong. Please try again later." });
+        // }
 
     } catch (err) {
-        console.error("Add Appointment Error:", err);
-        res.status(500).json({ success: false, message: "Something went wrong. Please try again later." });
+        console.log(err);
+        res.status(500).json({ success: false, message: "Server error" });
     }
 };
+
+
 
 // Get Departments For Navbar
 exports.getDepartments = async (req, res) => {

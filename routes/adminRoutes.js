@@ -18,7 +18,10 @@ router.put("/profile",verifyToken,isAdmin,upload.single("image"),adminController
 
 router.post("/slides",verifyToken,isAdmin,upload.single("slideImage"),adminController.addSlides);
 
-router.get("/slides", adminController.getSlides);
+router.get("/slides",verifyToken,isAdmin, adminController.getSlides);
+
+// delete slide //working are remaining
+router.delete("/slides/:id", verifyToken, isAdmin, adminController.deleteSlide);
 
 router.post("/doctors",verifyToken,isAdmin,upload.single("dr_photo"),adminController.addDoctor);
 
@@ -28,9 +31,9 @@ router.delete("/deleteDoctor/:id",verifyToken,isAdmin,adminController.deleteDoct
 
 router.put("/update_Doctor/:id",verifyToken,isAdmin,upload.single("dr_photo"),adminController.updateDoctor);
 
-router.get("/appointments", adminController.getAllAppointments);
+router.get("/appointments", verifyToken, isAdmin, adminController.getAllAppointments);
 
-router.put("/updateAppointment/:id",adminController.updateAppointment);
+router.put("/updateAppointment/:id", verifyToken, isAdmin, adminController.updateAppointment);
 
 router.post("/addFacility",verifyToken,isAdmin,upload.single("facility_image"),adminController.addFacility);
 
@@ -55,7 +58,5 @@ router.delete('/deleteDepartment/:id',verifyToken,isAdmin,adminController.delete
 
 
 
-// delete slide //working are remaining
-router.delete("/slides/:id", verifyToken, isAdmin, adminController.deleteSlide);
 
 module.exports = router;

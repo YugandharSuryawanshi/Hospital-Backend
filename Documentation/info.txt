@@ -15,64 +15,273 @@ CREATE TABLE notifications (
         ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+____________________________________________________________________________
+I Created bills table and this query is :-
+CREATE TABLE bills (
+    bill_id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    patient_id INT UNSIGNED NOT NULL,
+    reference_type ENUM(
+        'appointment',
+        'lab',
+        'pharmacy',
+        'room',
+        'operation',
+        'other'
+    ) NOT NULL,
+    reference_id INT UNSIGNED NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    tax DECIMAL(10,2) DEFAULT 0,
+    discount DECIMAL(10,2) DEFAULT 0,
+    final_amount DECIMAL(10,2) NOT NULL,
+    bill_status ENUM('unpaid','partial','paid') DEFAULT 'unpaid',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX(patient_id),
+    CONSTRAINT fk_bill_patient
+        FOREIGN KEY (patient_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
 
-
-
-userAxios.js
-import axios from "axios";
-
-const userAxios = axios.create({
-    baseURL: "http://localhost:4000/api/user",
-});
-
-userAxios.interceptors.request.use((config) => {
-    const token = localStorage.getItem("userToken");
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
-
-userAxios.interceptors.response.use(
-    (res) => res,
-    (err) => {
-        if (err.response?.status === 401 || err.response?.status === 403) {
-            localStorage.removeItem("userToken");
-            localStorage.removeItem("userUser");
-            window.location.href = "/login";
-        }
-        return Promise.reject(err);
-    }
+____________________________________________________________________________
+payments table
+CREATE TABLE payments (
+    payment_id INT PRIMARY KEY AUTO_INCREMENT,
+    bill_id INT UNSIGNED NOT NULL,
+    razorpay_order_id VARCHAR(255),
+    razorpay_payment_id VARCHAR(255),
+    razorpay_signature VARCHAR(255),
+    amount DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(10) DEFAULT 'INR',
+    payment_method ENUM('online','offline','insurance') NOT NULL,
+    payment_status ENUM('created','success','failed') DEFAULT 'created',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_payment_bill FOREIGN KEY (bill_id) REFERENCES bills(bill_id) ON DELETE CASCADE
 );
 
-export default userAxios;
 
 
-doctorAxios.js
-import axios from "axios";
 
-const doctorAxios = axios.create({
-    baseURL: "http://localhost:4000/api/doctor",
-});
+User Work Pending
+Cancel appointment
+views prescriptions
+pays bills
 
-doctorAxios.interceptors.request.use((config) => {
-    const token = localStorage.getItem("doctorToken");
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
 
-doctorAxios.interceptors.response.use(
-    (res) => res,
-    (err) => {
-        if (err.response?.status === 401 || err.response?.status === 403) {
-            localStorage.removeItem("doctorToken");
-            localStorage.removeItem("doctorUser");
-            window.location.href = "/doctor/login";
-        }
-        return Promise.reject(err);
-    }
+Admin Work Pending
+Manage feedback	quality
+Manage cashless / insurance	finance
+
+
+
+
+Doctor Work
+Feature	Why
+Login	access
+View own appointments	schedule
+Approve / reject bookings	workflow
+Add prescription	treatment
+Update visit notes	medical history
+Mark appointment complete	billing trigger
+View patient profile	context
+Upload medical reports	records
+
+
+
+
+admin & user
+Forgot password work pending
+
+
+
+____________________________________________________________________________
+Future Need tables
+
+CREATE TABLE prescriptions (
+    prescription_id INT PRIMARY KEY AUTO_INCREMENT,
+    appointment_id INT NOT NULL,
+    doctor_id INT NOT NULL,
+    patient_id INT NOT NULL,
+
+    diagnosis TEXT NOT NULL,
+    medicines TEXT NOT NULL,
+    instructions TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_prescription_appointment
+        FOREIGN KEY (appointment_id) REFERENCES appointments(appointment_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_prescription_doctor
+        FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_prescription_patient
+        FOREIGN KEY (patient_id) REFERENCES users(user_id)
+        ON DELETE CASCADE
 );
 
-export default doctorAxios;
+
+CREATE TABLE medical_records (
+    record_id INT PRIMARY KEY AUTO_INCREMENT,
+    patient_id INT NOT NULL,
+    doctor_id INT NULL,
+    appointment_id INT NULL,
+
+    file_path VARCHAR(255) NOT NULL,
+    description TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_record_patient
+        FOREIGN KEY (patient_id) REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_record_doctor
+        FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id)
+        ON DELETE SET NULL,
+
+    CONSTRAINT fk_record_appointment
+        FOREIGN KEY (appointment_id) REFERENCES appointments(appointment_id)
+        ON DELETE SET NULL
+);
+
+
+CREATE TABLE payments (
+    payment_id INT PRIMARY KEY AUTO_INCREMENT,
+    appointment_id INT NOT NULL,
+
+    amount DECIMAL(10,2) NOT NULL,
+    tax DECIMAL(10,2) DEFAULT 0,
+    discount DECIMAL(10,2) DEFAULT 0,
+    final_amount DECIMAL(10,2) NOT NULL,
+
+    payment_method ENUM('cash','card','upi','netbanking') NOT NULL,
+    payment_status ENUM('pending','success','failed') DEFAULT 'pending',
+
+    transaction_id VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_payment_appointment
+        FOREIGN KEY (appointment_id) REFERENCES appointments(appointment_id)
+        ON DELETE CASCADE
+);
+
+
+CREATE TABLE doctor_schedules (
+    schedule_id INT PRIMARY KEY AUTO_INCREMENT,
+    doctor_id INT NOT NULL,
+
+    day_of_week ENUM('mon','tue','wed','thu','fri','sat','sun') NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    max_patients INT DEFAULT 20,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_schedule_doctor
+        FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id)
+        ON DELETE CASCADE
+);
+
+
+
+ALTER TABLE appointments
+ADD CONSTRAINT fk_appointment_prescription
+FOREIGN KEY (prescription_id) REFERENCES prescriptions(prescription_id)
+ON DELETE SET NULL;
+
+
+
+
+
+
+
+
+Flow
+appointment -> Mode
+                |
+                \/
+        ------------------
+        |                |
+        offline         online -> before on click submit open BillPayment.jsx page
+                                    |-> and call send all info further route -> And then further process
+(direct book appointment)
+
+
+
+const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        if (!formData.user_name || !formData.user_contact) {
+            toastError("Fill required fields");
+            return;
+        }
+
+        const appointmentPayload = {
+            doctor_id,
+            ...formData
+        };
+
+        try {
+            // OFFLINE
+            if (paymentMode === "offline") {
+                const res = await userAxios.post("/addAppointment", {
+                    ...appointmentPayload,
+                    payment_mode: "offline"
+                });
+
+                alert(`Token: ${res.data.token_number}`);
+                toastSuccess(res.data.message);
+                navigate("/profile");
+                return;
+            }
+
+            // ONLINE
+            const orderRes = await userAxios.post("/create-order", {
+                doctor_id
+            });
+
+            const options = {
+                key: orderRes.data.key,
+                amount: orderRes.data.order.amount,
+                currency: "INR",
+                order_id: orderRes.data.order.id,
+
+                handler: async function (response) {
+                    const verifyRes = await userAxios.post("/verify-payment", {
+                        ...response,
+                        appointmentData: appointmentPayload,
+                        bill_id: orderRes.data.bill_id
+                    });
+
+                    alert(`Token: ${verifyRes.data.token_number}`);
+                    toastSuccess("Appointment Confirmed");
+                    navigate("/profile");
+                },
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.open();
+
+        } catch (err) {
+            console.log(err);
+            toastError("Booking failed");
+        }
+    };
+
+
+Appointment table columns
+    // user_name
+    // user_contact
+    // user_email
+    // appointment_datetime
+    // appointment_date
+    // appointment_time
+    // visit_type
+    // payment_mode
+    // payment_status
+    // token_number
+    // address
+    // notes
+    // status
