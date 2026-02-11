@@ -134,34 +134,14 @@ exports.getDoctors = async (req, res) => {
 exports.addAppointment = async (req, res) => {
     try {
         const user_id = req.user.id;
-
-        const { doctor_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time, notes,
-            paymentMode } = req.body;
+        const { doctor_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time, notes, paymentMode } = req.body;
         const visit_type = "offline";
         const payment_status = "pending";
-        const doctor = await pool.execute("SELECT * FROM doctors WHERE doctor_id = ?", [doctor_id]);
-        const dr_fee = doctor[0].dr_fee;
-
-        console.log('Came Info towards Frontend :- '+req.body);
-        console.log('Book appointment user id :- '+req.user.id);
-        console.log('Book appointment user id :- '+req.user.user_id);
-        console.log('Book appointment doctor id :- '+doctor_id);
-        console.log('Book appointment user name :- '+user_name);
-        console.log('Book appointment user contact :- '+user_contact);
-        console.log('Book appointment user email :- '+user_email);
-        console.log('Book appointment user address :- '+user_address);
-        console.log('Book appointment date :- '+appointment_date);
-        console.log('Book appointment time :- '+appointment_time);
-        console.log('Book appointment notes :- '+notes);
-        console.log('Book appointment dr fee :- '+dr_fee);
-        console.log('Book appointment payment mode :- '+paymentMode);
-        console.log('Book appointment visit type :- '+visit_type);
-        console.log('Book appointment payment status :- '+payment_status);
-        
-        
+        const [doctorRows] = await pool.execute("SELECT * FROM doctors WHERE doctor_id = ?", [doctor_id]);
+        const dr_fee = doctorRows[0].dr_fee;
 
         // 1️⃣ check slot
-        const [alreadyExisted] = await pool.execute(`SELECT * FROM appointments WHERE doctor_id=? AND appointment_date=? 
+        const [alreadyExisted] = await pool.execute(`SELECT * FROM appointments WHERE doctor_id=? AND appointment_date=?
             AND appointment_time=? AND status!='Cancelled'`, [doctor_id, appointment_date, appointment_time]);
 
         if (alreadyExisted.length > 0) {
@@ -183,50 +163,34 @@ exports.addAppointment = async (req, res) => {
         const appointment_datetime = `${appointment_date} ${appointment_time}:00`;
 
         // 3️⃣ create appointment
-    //     const [result] = await pool.execute(`INSERT INTO appointments (doctor_id,user_id,user_name,user_contact,user_email,address,
-    //    appointment_date,appointment_time,appointment_datetime,
-    //    notes,status,visit_type,token_number,payment_mode, payment_status)
-    //   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    //         [
-    //             doctor_id,
-    //             user_id,
-    //             user_name,
-    //             user_contact,
-    //             user_email,
-    //             user_address,
-    //             appointment_date,
-    //             appointment_time,
-    //             appointment_datetime,
-    //             notes,
-    //             "Pending",
-    //             visit_type || "offline",
-    //             token_number,
-    //             paymentMode,
-    //             payment_status
-    //         ]
-    //     );
+        const [result] = await pool.execute(`INSERT INTO appointments (doctor_id,user_id,user_name,user_contact,user_email,address,
+        appointment_date,appointment_time,appointment_datetime,notes,status,visit_type,token_number,payment_mode, payment_status)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [doctor_id, user_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time,
+                appointment_datetime, notes, "Pending", visit_type || "offline", token_number, paymentMode, payment_status
+            ]);
 
-        // const appointment_id = result.insertId;
+        const appointment_id = result.insertId;
 
         // 4️⃣ create bill (consultation fee)
-        const consultation_fee = dr_fee; // later dynamic from doctor table
+        const consultation_fee = dr_fee;
 
-        // if (result) {
-        //     const [bill] = await pool.execute(
-        //     `INSERT INTO bills (patient_id, reference_type, reference_id, total_amount, final_amount) VALUES (?, 'appointment', ?, ?, ?)`,
-        //     [user_id, appointment_id, consultation_fee, consultation_fee]
-        // );
-        // res.status(201).json({
-        //     success: true,
-        //     message: "Appointment booked..",
-        //     appointment_id,
-        //     bill_id: bill.insertId,
-        //     token_number
-        // });
-        // }
-        // else {
-        //     res.status(500).json({ success: false, message: "Something went wrong. Please try again later." });
-        // }
+        if (result) {
+            const [bill] = await pool.execute(
+                `INSERT INTO bills (patient_id, reference_type, reference_id, total_amount, final_amount) VALUES (?, 'appointment', ?, ?, ?)`,
+                [user_id, appointment_id, consultation_fee, consultation_fee]
+            );
+            res.status(201).json({
+                success: true,
+                message: "Appointment booked..",
+                appointment_id,
+                bill_id: bill.insertId,
+                token_number
+            });
+        }
+        else {
+            res.status(500).json({ success: false, message: "Something went wrong. Please try again later." });
+        }
 
     } catch (err) {
         console.log(err);
