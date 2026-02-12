@@ -195,21 +195,6 @@ ON DELETE SET NULL;
 
 
 
-
-
-
-Flow
-appointment -> Mode
-                |
-                \/
-        ------------------
-        |                |
-        offline         online -> before on click submit open BillPayment.jsx page
-                                    |-> and call send all info further route -> And then further process
-(direct book appointment)
-
-
-
 const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -285,3 +270,11 @@ Appointment table columns
     // address
     // notes
     // status
+
+
+
+Flow
+    appointment ->
+    (offline) [Booked] -> redirect to profile page
+    (online) [Booked] -> redirect to BillPayment.jsx page-> after payment -> change status inside bills table and store payments table ->
+    after success redirect PendingPayment.jsx
