@@ -278,3 +278,4 @@ Flow
     (offline) [Booked] -> redirect to profile page
     (online) [Booked] -> redirect to BillPayment.jsx page-> after payment -> change status inside bills table and store payments table ->
     after success redirect PendingPayment.jsx
+The Traitors

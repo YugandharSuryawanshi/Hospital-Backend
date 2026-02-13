@@ -139,6 +139,10 @@ exports.addAppointment = async (req, res) => {
         const payment_status = "pending";
         const [doctorRows] = await pool.execute("SELECT * FROM doctors WHERE doctor_id = ?", [doctor_id]);
         const dr_fee = doctorRows[0].dr_fee;
+        console.log('Came booking info :- '+req.body);
+        console.log('Payment Mode :- '+paymentMode);
+        
+        
 
         // 1️⃣ check slot
         const [alreadyExisted] = await pool.execute(`SELECT * FROM appointments WHERE doctor_id=? AND appointment_date=?
@@ -185,7 +189,8 @@ exports.addAppointment = async (req, res) => {
                 message: "Appointment booked..",
                 appointment_id,
                 bill_id: bill.insertId,
-                token_number
+                token_number,
+                paymentMode
             });
         }
         else {
@@ -198,6 +203,21 @@ exports.addAppointment = async (req, res) => {
     }
 };
 
+// Get bill
+exports.getBill = async (req, res) => {
+    try {
+        const { id } = req.params;
+        console.log('Bill id came is :- '+id);
+        
+        const [rows] = await pool.execute("SELECT * FROM bills WHERE bill_id = ?", [id]);
+        console.log('Bill fetch is :- '+rows);
+        console.log('Bill fetch is :- '+rows[0]);
+        
+        res.json(rows[0] || null);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
 
 
 // Get Departments For Navbar

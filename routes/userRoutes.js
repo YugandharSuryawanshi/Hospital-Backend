@@ -36,5 +36,7 @@ router.delete("/deleteNotification/:id", verifyToken, userController.deleteNotif
 
 router.get("/notifications/unread-count", verifyToken, userController.unreadCount);
 
+router.get("/bill/:id", verifyToken, userController.getBill);
+
 
 module.exports = router;
