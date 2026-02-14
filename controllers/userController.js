@@ -94,57 +94,17 @@ exports.getDoctors = async (req, res) => {
 }
 
 // Get/Add Appointment
-// exports.addAppointment = async (req, res) => {
-//     try {
-//         const user_id = req.user.id; // get from jwt
-//         const { doctor_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time, notes } = req.body;
-
-//         //Check (same doctor, same date, same time)
-//         const [alreadyExisted] = await pool.execute(`SELECT appointment_id FROM appointments WHERE doctor_id = ? AND appointment_date = ?
-//             AND appointment_time = ? AND status != 'Cancelled'`,
-//             [doctor_id, appointment_date, appointment_time]);
-
-//         if (alreadyExisted.length > 0) {
-//             return res.status(409).json({
-//                 success: false,
-//                 message: "This time slot is not available for this doctor. Please choose another time."
-//             });
-//         }
-
-//         //Create datetime in backend
-//         const appointment_datetime = `${appointment_date} ${appointment_time}:00`;
-
-//         // Insert Appointment
-//         const [result] = await pool.execute(`INSERT INTO appointments(doctor_id,user_id,user_name,user_contact,user_email,address,
-//             appointment_date,appointment_time,appointment_datetime,notes,status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-//             [doctor_id, user_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time, appointment_datetime,
-//                 notes, 'Pending']);
-
-//         res.status(201).json({
-//             success: true, message: "Your appointment request has been submitted Successfully..!. Please wait for hospital approval.",
-//             appointment_id: result.insertId
-//         });
-
-//     } catch (err) {
-//         console.error("Add Appointment Error:", err);
-//         res.status(500).json({ success: false, message: "Something went wrong. Please try again later." });
-//     }
-// };
-
 exports.addAppointment = async (req, res) => {
     try {
-        const user_id = req.user.id;
+        const user_id = req.user.user_id;
         const { doctor_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time, notes, paymentMode } = req.body;
         const visit_type = "offline";
         const payment_status = "pending";
+        const finalPaymentMode = paymentMode === "online" ? "online" : "offline";
         const [doctorRows] = await pool.execute("SELECT * FROM doctors WHERE doctor_id = ?", [doctor_id]);
         const dr_fee = doctorRows[0].dr_fee;
-        console.log('Came booking info :- '+req.body);
-        console.log('Payment Mode :- '+paymentMode);
-        
-        
 
-        // 1️⃣ check slot
+        //Check Slot
         const [alreadyExisted] = await pool.execute(`SELECT * FROM appointments WHERE doctor_id=? AND appointment_date=?
             AND appointment_time=? AND status!='Cancelled'`, [doctor_id, appointment_date, appointment_time]);
 
@@ -155,35 +115,36 @@ exports.addAppointment = async (req, res) => {
             });
         }
 
-        // 2️⃣ generate token number (per doctor per day)
+        //Generate token number (per doctor per day)
         const [lastToken] = await pool.execute(`SELECT IFNULL(MAX(token_number),0) as last FROM appointments
             WHERE doctor_id=? AND appointment_date=?`, [doctor_id, appointment_date]);
-        console.log('Last token is :- ' + lastToken);
-
         const token_number = lastToken[0].last + 1;
-
-        console.log('Token number is :- ' + token_number);
-
         const appointment_datetime = `${appointment_date} ${appointment_time}:00`;
 
-        // 3️⃣ create appointment
-        const [result] = await pool.execute(`INSERT INTO appointments (doctor_id,user_id,user_name,user_contact,user_email,address,
-        appointment_date,appointment_time,appointment_datetime,notes,status,visit_type,token_number,payment_mode, payment_status)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-            [doctor_id, user_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time,
-                appointment_datetime, notes, "Pending", visit_type || "offline", token_number, paymentMode, payment_status
-            ]);
+        //Insert appointment
+        const [result] = await pool.execute(`INSERT INTO appointments (doctor_id,user_id,user_name,user_contact,user_email,appointment_datetime,
+            appointment_date,appointment_time,visit_type,payment_mode,payment_status,token_number,address,notes,status)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [doctor_id, user_id, user_name, user_contact, user_email, appointment_datetime, appointment_date, appointment_time,
+                visit_type || "offline", finalPaymentMode, payment_status, token_number, user_address, notes, "Pending"]);
 
         const appointment_id = result.insertId;
 
-        // 4️⃣ create bill (consultation fee)
+        //Create bill (consultation fee)
         const consultation_fee = dr_fee;
+        // Create notification
+        await pool.execute(`INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`,
+            [user_id, "Appointment Get Successfully", `Your appointment Approval is Pending`]);
+
+        // Real Time EMIT
+        global.io.to(`user_${user_id}`).emit("new-notification", {
+            title: "Get Appointment Successfully",
+            message: `Your appointment status is now Pending Wait for Approval`
+        });
 
         if (result) {
-            const [bill] = await pool.execute(
-                `INSERT INTO bills (patient_id, reference_type, reference_id, total_amount, final_amount) VALUES (?, 'appointment', ?, ?, ?)`,
-                [user_id, appointment_id, consultation_fee, consultation_fee]
-            );
+            const [bill] = await pool.execute(`INSERT INTO bills (patient_id, reference_type, reference_id, total_amount, final_amount)
+                VALUES (?, 'appointment', ?, ?, ?)`, [user_id, appointment_id, consultation_fee, consultation_fee]);
             res.status(201).json({
                 success: true,
                 message: "Appointment booked..",
@@ -207,18 +168,36 @@ exports.addAppointment = async (req, res) => {
 exports.getBill = async (req, res) => {
     try {
         const { id } = req.params;
-        console.log('Bill id came is :- '+id);
-        
-        const [rows] = await pool.execute("SELECT * FROM bills WHERE bill_id = ?", [id]);
-        console.log('Bill fetch is :- '+rows);
-        console.log('Bill fetch is :- '+rows[0]);
-        
+        const [rows] = await pool.execute(`
+            SELECT b.*,
+                u.user_id,
+                u.user_name AS patient_name,
+                u.user_email AS patient_email,
+                u.user_phone AS patient_contact,
+                a.appointment_date AS appointment_date,
+                a.appointment_time AS appointment_time,
+                a.appointment_datetime AS appointment_datetime,
+                a.payment_mode AS payment_mode,
+                a.payment_status AS payment_status,
+                a.token_number AS token_number,
+                a.notes AS notes,
+                a.status AS appointment_status,
+                d.dr_name AS dr_name,
+                d.dr_certificate AS dr_certificate,
+                d.dr_position AS dr_position,
+                d.dr_speciality As dr_speciality,
+                d.dr_contact AS dr_contact
+            FROM bills b
+            JOIN users u ON b.patient_id = u.user_id
+            JOIN appointments a ON b.reference_id = a.appointment_id
+            JOIN doctors d ON a.doctor_id = d.doctor_id
+            WHERE b.bill_id = ?`, [id]);
+
         res.json(rows[0] || null);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 };
-
 
 // Get Departments For Navbar
 exports.getDepartments = async (req, res) => {
