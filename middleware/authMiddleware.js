@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+// Verify token
 const verifyToken = (req, res, next) => {
     const header = req.headers.authorization || req.headers.Authorization;
 
@@ -21,7 +22,7 @@ const verifyToken = (req, res, next) => {
     }
 };
 
-
+// Is admin
 const isAdmin = (req, res, next) => {
     if (!req.user)
         return res.status(401).json({ message: 'Unauthorized' });
@@ -32,10 +33,8 @@ const isAdmin = (req, res, next) => {
     next();
 };
 
-
+// Is user
 const isUser = (req, res, next) => {
-    console.log('is user Req.user is '+req.user);
-    
     if (!req.user)
         return res.status(401).json({ message: 'Unauthorized' });
 
@@ -45,6 +44,7 @@ const isUser = (req, res, next) => {
     next();
 };
 
+// Is doctor
 const isDoctor = (req, res, next) => {
     if (!req.user)
         return res.status(401).json({ message: 'Unauthorized' });

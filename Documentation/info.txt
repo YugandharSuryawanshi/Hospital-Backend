@@ -279,3 +279,14 @@ Flow
     (online) [Booked] -> redirect to BillPayment.jsx page-> after payment -> change status inside bills table and store payments table ->
     after success redirect PendingPayment.jsx
 The Traitors
+
+
+Payment done ✅
+Now → patient cancels → money must return 💰
+→ appointment cancelled
+→ bill updated
+→ payment updated
+→ refund entry
+→ user notified
+
+THIS is enterprise logic.

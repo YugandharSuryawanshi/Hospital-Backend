@@ -238,10 +238,18 @@ exports.getDoctorsByDepartment = async (req, res) => {
 exports.getMyAppointments = async (req, res) => {
     try {
         const user_id = req.user.id; //from jwt
-        const [rows] = await pool.execute(`SELECT a.appointment_id, DATE_FORMAT(a.appointment_date, '%Y-%m-%d') AS appointment_date, a.appointment_time, a.status, a.notes, d.dr_name,
-            d.dr_speciality FROM appointments a JOIN doctors d ON d.doctor_id = a.doctor_id WHERE a.user_id = ?
-            ORDER BY a.created_at DESC`, [user_id]);
+        const [rows] = await pool.execute(`SELECT a.appointment_id, DATE_FORMAT(a.appointment_date, '%Y-%m-%d') AS appointment_date,
+            a.appointment_time, a.status, a.notes, a.token_number, a.payment_status,
+            d.dr_name, d.dr_speciality,
+            u.user_name AS user_name,
+            b.bill_id AS bill_id
+            FROM appointments a
+            JOIN doctors d ON d.doctor_id = a.doctor_id
+            JOIN users u ON u.user_id = a.user_id
+            JOIN bills b ON b.reference_id = a.appointment_id
+            WHERE a.user_id = ? ORDER BY a.created_at DESC;`, [user_id]);
         res.json(rows);
+        
     } catch (err) {
         console.error("Get Appointments Error:", err);
         res.status(500).json({ message: "Failed to fetch appointments" });

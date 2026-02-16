@@ -96,7 +96,7 @@ exports.paymentFailed = async (req, res) => {
         const { razorpay_order_id, bill_id } = req.body;
 
         //Update payments table
-        await pool.execute(`UPDATE payments SET payment_status='failed' WHERE razorpay_order_id=?`,[razorpay_order_id]);
+        await pool.execute(`UPDATE payments SET payment_status='failed' WHERE razorpay_order_id=?`, [razorpay_order_id]);
 
         //Update appointment table
         await pool.execute(`UPDATE appointments a
@@ -110,3 +110,63 @@ exports.paymentFailed = async (req, res) => {
         res.status(500).json({ success: false });
     }
 };
+
+//Cancel Appointment
+exports.cancelAppointment = async (req, res) => {
+    try {
+        const { bill_id } = req.body;
+
+        //Get bill Details
+        const [billRows] = await pool.execute("SELECT * FROM bills WHERE bill_id = ?", [bill_id]);
+
+        if (!billRows.length) {
+            return res.json({ success: false, message: "Bill not found" });
+        }
+
+        const bill = billRows[0];
+
+        //Stop double cancel
+        if (bill.bill_status === "cancelled") {
+            return res.json({ success: false, message: "Already cancelled" });
+        }
+
+        //Get appointment info
+        const [appointment] = await pool.execute("SELECT * FROM appointments WHERE appointment_id = ?", [bill.reference_id]);
+
+        if (!appointment.length) {
+            return res.json({ success: false, message: "Appointment not found" });
+        }
+
+        const appointmentInfo = appointment[0];
+
+        //Refund if paid online
+        if (appointmentInfo.payment_mode === "online" && bill.bill_status === "paid") {
+            const [payRows] = await pool.execute("SELECT * FROM payments WHERE bill_id = ? AND payment_status = 'success'", [bill_id]);
+
+            if (payRows.length) {
+                const payment = payRows[0];
+                const refund = await razorpay.payments.refund(
+                    payment.razorpay_payment_id,
+                    {
+                        amount: payment.amount * 100
+                    });
+
+                // FIXED SQL
+                await pool.execute(`UPDATE payments SET payment_status = 'refunded', refund_id = ?, refund_amount = ?,refund_date = NOW()
+                    WHERE payment_id = ?`, [refund.id, payment.amount, payment.payment_id]);
+            }
+        }
+
+        //Cancel appointment
+        await pool.execute("UPDATE appointments SET status = 'Cancelled', payment_status = 'refunded' WHERE appointment_id = ?", [bill.reference_id]);
+
+        //Update bill Details also
+        await pool.execute("UPDATE bills SET bill_status = 'cancelled', cancelled_at = NOW() WHERE bill_id = ?", [bill_id]);
+
+        res.json({ success: true });
+    } catch (err) {
+        console.log("Cancel Error =>", err);
+        res.status(500).json({ success: false, message: "Cancel failed" });
+    }
+};
+
