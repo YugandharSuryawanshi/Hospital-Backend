@@ -54,6 +54,12 @@ io.on("connection", (socket) => {
     const conn = await pool.getConnection();
     console.log('MySQL Connected');
     conn.release();
+
+    //Auto call function daily on time
+    require("./jobs/noShowJob");
+    // For sms reminder
+    require("./jobs/reminderJob");
+
   } catch (err) {
     console.error('MySQL Error:', err.message);
   }
