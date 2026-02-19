@@ -71,7 +71,7 @@ exports.verifyPayment = async (req, res) => {
         }
 
         //Update Payment table
-        await pool.execute(`UPDATE payments SET razorpay_payment_id=?, razorpay_signature=?, payment_status='success'
+        await pool.execute(`UPDATE payments SET razorpay_payment_id=?, razorpay_signature=?, payment_status='paid'
             WHERE razorpay_order_id=?`, [razorpay_payment_id, razorpay_signature, razorpay_order_id]);
 
         //Update Bill table
@@ -141,7 +141,7 @@ exports.cancelAppointment = async (req, res) => {
 
         //Refund if paid online
         if (appointmentInfo.payment_mode === "online" && bill.bill_status === "paid") {
-            const [payRows] = await pool.execute("SELECT * FROM payments WHERE bill_id = ? AND payment_status = 'success'", [bill_id]);
+            const [payRows] = await pool.execute("SELECT * FROM payments WHERE bill_id = ? AND payment_status = 'paid'", [bill_id]);
 
             if (payRows.length) {
                 const payment = payRows[0];
