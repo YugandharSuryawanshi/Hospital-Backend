@@ -6,8 +6,7 @@ cron.schedule("59 23 * * *", async () => {
     try {
         console.log("Running No Show Job...");
 
-        await pool.execute(`UPDATE appointments SET status = 'no_show'
-            WHERE appointment_date < CURDATE() AND status = 'approved'`);
+        await pool.execute(`UPDATE appointments SET status = 'No_show' WHERE appointment_date < CURDATE() AND status = 'Approved'`);
         console.log("No Show Updated");
     } catch (err) {
         console.log("No Show Error:", err);
