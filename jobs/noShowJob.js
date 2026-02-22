@@ -4,8 +4,7 @@ const pool = require("../config/db");
 // Every day at 11:59 PM
 cron.schedule("59 23 * * *", async () => {
     try {
-        console.log("Running No Show Job...");
-
+        console.log("Running No Show Job...");      //----This is temparary for check
         await pool.execute(`UPDATE appointments SET status = 'No_show' WHERE appointment_date < CURDATE() AND status = 'Approved'`);
         console.log("No Show Updated");
     } catch (err) {
