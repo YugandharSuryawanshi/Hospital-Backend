@@ -95,6 +95,7 @@ exports.getDoctors = async (req, res) => {
 
 // Get/Add Appointment
 exports.addAppointment = async (req, res) => {
+    let token_number;
     try {
         const user_id = req.user.user_id;
         const { doctor_id, user_name, user_contact, user_email, user_address, appointment_date, appointment_time, notes, paymentMode } = req.body;
@@ -109,16 +110,18 @@ exports.addAppointment = async (req, res) => {
             AND appointment_time=? AND status!='Cancelled'`, [doctor_id, appointment_date, appointment_time]);
 
         if (alreadyExisted.length > 0) {
-            return res.status(409).json({
+            res.status(409).json({
                 success: false,
                 message: "This slot already booked. Select another after 5 min time."
-            });
+            })
         }
 
         //Generate token number (per doctor per day)
-        const [lastToken] = await pool.execute(`SELECT IFNULL(MAX(token_number),0) as last FROM appointments
-            WHERE doctor_id=? AND appointment_date=?`, [doctor_id, appointment_date]);
-        const token_number = lastToken[0].last + 1;
+        const [rows] = await pool.execute(
+        `SELECT IFNULL(MAX(token_number),0) as last FROM appointments WHERE doctor_id=? AND appointment_date=? FOR UPDATE`,
+        [doctor_id, appointment_date]
+    );
+        token_number = rows[0].last + 1;
         const appointment_datetime = `${appointment_date} ${appointment_time}:00`;
 
         //Insert appointment
