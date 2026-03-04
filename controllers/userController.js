@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
+const { sendNotification } = require('../utils/notificationService')
 
 // Get User
 exports.getUserById = async (req, res) => {
@@ -118,9 +119,9 @@ exports.addAppointment = async (req, res) => {
 
         //Generate token number (per doctor per day)
         const [rows] = await pool.execute(
-        `SELECT IFNULL(MAX(token_number),0) as last FROM appointments WHERE doctor_id=? AND appointment_date=? FOR UPDATE`,
-        [doctor_id, appointment_date]
-    );
+            `SELECT IFNULL(MAX(token_number),0) as last FROM appointments WHERE doctor_id=? AND appointment_date=? FOR UPDATE`,
+            [doctor_id, appointment_date]
+        );
         token_number = rows[0].last + 1;
         const appointment_datetime = `${appointment_date} ${appointment_time}:00`;
 
@@ -135,15 +136,6 @@ exports.addAppointment = async (req, res) => {
 
         //Create bill (consultation fee)
         const consultation_fee = dr_fee;
-        // Create notification
-        await pool.execute(`INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`,
-            [user_id, "Appointment Get Successfully", `Your appointment Approval is Pending`]);
-
-        // Real Time EMIT
-        global.io.to(`user_${user_id}`).emit("new-notification", {
-            title: "Get Appointment Successfully",
-            message: `Your appointment status is now Pending Wait for Approval`
-        });
 
         if (result) {
             const [bill] = await pool.execute(`INSERT INTO bills (patient_id, reference_type, reference_id, total_amount, final_amount)
@@ -159,6 +151,37 @@ exports.addAppointment = async (req, res) => {
         }
         else {
             res.status(500).json({ success: false, message: "Something went wrong. Please try again later." });
+        }
+
+        // Notification Section
+        //Notify User
+        await sendNotification({
+            receiver_id: user_id,
+            receiver_role: "user",
+            message: "Your appointment has been booked successfully. Wait for confirmation.",
+            type: "appointment",
+            related_id: appointment_id
+        });
+
+        //Notify Doctor
+        await sendNotification({
+            receiver_id: doctor_id,
+            receiver_role: "doctor",
+            message: "New appointment booked by patient.",
+            type: "appointment",
+            related_id: appointment_id
+        });
+
+        //Notify ALL ADMINS
+        const [admins] = await pool.execute("SELECT user_id FROM users WHERE role='admin'");
+        for (let admin of admins) {
+            await sendNotification({
+                receiver_id: admin.user_id,
+                receiver_role: "admin",
+                message: "New appointment received.",
+                type: "appointment",
+                related_id: appointment_id
+            });
         }
 
     } catch (err) {
@@ -252,7 +275,7 @@ exports.getMyAppointments = async (req, res) => {
             JOIN bills b ON b.reference_id = a.appointment_id
             WHERE a.user_id = ? ORDER BY a.created_at DESC;`, [user_id]);
         res.json(rows);
-        
+
     } catch (err) {
         console.error("Get Appointments Error:", err);
         res.status(500).json({ message: "Failed to fetch appointments" });
@@ -261,13 +284,15 @@ exports.getMyAppointments = async (req, res) => {
 
 // Get Notifications
 exports.getNotifications = async (req, res) => {
-    const [rows] = await pool.execute(`SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC`, [req.user.id]);
+    const userId = req.user.id;
+    const [rows] = await pool.execute(`SELECT * FROM notifications WHERE receiver_role='user' AND receiver_id=? ORDER BY created_at DESC`,[userId]);
     res.json(rows);
 };
 
 // Mark Notifications Read
 exports.markAsRead = async (req, res) => {
-    await pool.execute(`UPDATE notifications SET is_read = 1 WHERE user_id = ?`, [req.user.id]);
+    const userId = req.user.id;
+    await pool.execute(`UPDATE notifications SET is_read = TRUE WHERE receiver_role='user' AND receiver_id=?`,[userId]);
     res.json({ message: "Notifications marked as read" });
 };
 
@@ -281,10 +306,9 @@ exports.deleteNotification = async (req, res) => {
 // Get Unread Notification Count
 exports.unreadCount = async (req, res) => {
     const userId = req.user.id;
-    const [[row]] = await pool.execute(
-        `SELECT COUNT(*) AS count FROM notifications WHERE user_id=? AND is_read=0`,
-        [userId]
-    );
+    const [[row]] = await pool.execute(`SELECT COUNT(*) AS count FROM notifications WHERE receiver_role='user'
+        AND receiver_id=?
+        AND is_read=FALSE`,[userId]);
     res.json({ count: row.count });
 };
 

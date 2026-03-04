@@ -28,6 +28,9 @@ router.get("/getDoctorsByDepartment/:id", userController.getDoctorsByDepartment)
 
 router.get("/getMyAppointments", verifyToken, isUser, userController.getMyAppointments);
 
+router.get("/bill/:id", verifyToken, userController.getBill);
+
+// Notifications
 router.get("/notifications", verifyToken, userController.getNotifications);
 
 router.put("/notifications/read", verifyToken, userController.markAsRead);
@@ -36,7 +39,6 @@ router.delete("/deleteNotification/:id", verifyToken, userController.deleteNotif
 
 router.get("/notifications/unread-count", verifyToken, userController.unreadCount);
 
-router.get("/bill/:id", verifyToken, userController.getBill);
 
 
 module.exports = router;

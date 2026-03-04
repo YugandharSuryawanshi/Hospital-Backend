@@ -1,6 +1,8 @@
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const pool = require("../config/db");
+const { sendNotification } = require('../utils/notificationService')
+
 
 // init razorpay
 const razorpay = new Razorpay({
@@ -162,6 +164,15 @@ exports.cancelAppointment = async (req, res) => {
 
         //Update bill Details also
         await pool.execute("UPDATE bills SET bill_status = 'cancelled', cancelled_at = NOW() WHERE bill_id = ?", [bill_id]);
+
+        //Create notification
+        await sendNotification({
+            receiver_id: appointmentInfo.user_id,
+            receiver_role: "user",
+            message: "Your appointment has been cancelled..! If your are applicable refund will be initiated.",
+            type: "appointment",
+            related_id: appointmentInfo.appointment_id
+        });
 
         res.json({ success: true });
     } catch (err) {

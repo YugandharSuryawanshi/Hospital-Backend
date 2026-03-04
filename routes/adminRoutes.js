@@ -56,6 +56,13 @@ router.put('/updateDepartment/:id',verifyToken,isAdmin,adminController.updateDep
 
 router.delete('/deleteDepartment/:id',verifyToken,isAdmin,adminController.deleteDepartment);
 
+// Notifications
+router.get('/notifications', verifyToken, isAdmin, adminController.getNotifications);
+
+router.get('/notifications/unread-count', verifyToken, isAdmin, adminController.unreadCount);
+
+router.put('/notifications/mark-read', verifyToken, isAdmin, adminController.markNotificationAsRead);
+
 
 
 

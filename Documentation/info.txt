@@ -184,6 +184,17 @@ CREATE TABLE doctor_schedules (
         ON DELETE CASCADE
 );
 
+//Notification Table Create query
+CREATE TABLE notifications (
+    notification_id INT AUTO_INCREMENT PRIMARY KEY,
+    receiver_id INT NOT NULL,
+    receiver_role ENUM('admin','doctor','user') NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(100),
+    related_id INT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 
 ALTER TABLE appointments

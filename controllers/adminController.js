@@ -2,6 +2,7 @@ const pool = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+const { sendNotification } = require('../utils/notificationService')
 
 // Get dashboard counts
 exports.getDashboardCounts = async (req, res) => {
@@ -243,15 +244,44 @@ exports.updateAppointment = async (req, res) => {
         // Get user_id of appointment
         const [[appointment]] = await pool.execute("SELECT user_id FROM appointments WHERE appointment_id = ?", [appointmentId]);
 
-        // Create notification
-        await pool.execute(`INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`,
-            [appointment.user_id, "Appointment Updated", `Your appointment has been ${status}`]);
+        //Only send notification if status actually changed
+        const oldStatus = appointment.status;
+        if (oldStatus !== status) {
 
-        // Real Time EMIT
-        global.io.to(`user_${appointment.user_id}`).emit("new-notification", {
-            title: "Appointment Updated",
-            message: `Your appointment status is now ${status}`
-        });
+            let message = "";
+            switch (status) {
+                case "Approved":
+                    message = "Your appointment has been approved by admin.";
+                    break;
+
+                case "Rejected":
+                    message = "Your appointment has been rejected by admin.";
+                    break;
+
+                case "Cancelled":
+                    message = "Your appointment has been cancelled.";
+                    break;
+
+                case "Completed":
+                    message = "Your appointment has been completed successfully.";
+                    break;
+
+                case "Pending":
+                    message = "Your appointment status is now pending.";
+                    break;
+
+                default:
+                    message = `Your appointment status has been updated to ${status}.`;
+            }
+
+            await sendNotification({
+                receiver_id: appointment.user_id,
+                receiver_role: "user",
+                message,
+                type: "appointment_status",
+                related_id: appointmentId
+            });
+        }
 
         res.json({ message: "Appointment updated successfully..." });
     } catch (err) {
@@ -421,6 +451,43 @@ exports.deleteDepartment = async (req, res) => {
     }
 }
 
+// Get notifications
+exports.getNotifications = async (req, res) => {
+    try {
+        const adminId = req.user.id; // from verifyToken
+
+        const [rows] = await pool.execute(`SELECT * FROM notifications WHERE receiver_role='admin' AND receiver_id=? 
+            ORDER BY created_at DESC`, [adminId]);
+
+        res.json(rows);
+    } catch (err) {
+        console.error("getNotifications error", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+exports.unreadCount = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        const [rows] = await pool.execute(`SELECT COUNT(*) as count FROM notifications WHERE receiver_role='admin' 
+            AND receiver_id=? AND is_read = false`, [adminId]);
+
+        res.json({ count: rows[0].count });
+    } catch (err) {
+        console.error("unreadCount error", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.markNotificationAsRead = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        await pool.execute(`UPDATE notifications SET is_read = true WHERE receiver_role='admin' AND receiver_id=?`, [adminId]);
+        res.json({ message: "Marked as read" });
+    } catch (err) {
+        console.error("markNotificationAsRead error", err);
+        res.status(500).json({ error: err.message });
+    }
+};
 
 
 
