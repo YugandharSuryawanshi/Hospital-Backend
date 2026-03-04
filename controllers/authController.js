@@ -22,10 +22,15 @@ exports.register = async (req, res) => {
 
         const hashed = await bcrypt.hash(userPassword, 10);
         const imagePath = req.file ? `uploads/${req.file.filename}` : null;
+        //convert undefined to null if not came
+        const safePhone = phone ?? null;
+        const safeAge = age ?? null;
+        const safeGender = gender ?? null;
+        const safeAddress = address ?? null;
 
         const [result] = await pool.execute(
             'INSERT INTO users (user_name, user_email,user_phone, user_age, user_gender , user_address, user_password, user_profile, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [userName, userEmail, phone, age, gender, address, hashed, imagePath, role || 'user']
+            [userName, userEmail, safePhone, safeAge, safeGender, safeAddress, hashed, imagePath, role || 'user']
         );
 
         const insertId = result.insertId;

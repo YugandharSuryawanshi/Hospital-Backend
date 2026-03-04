@@ -104,6 +104,7 @@ exports.addAppointment = async (req, res) => {
         const payment_status = "pending";
         const finalPaymentMode = paymentMode === "online" ? "online" : "offline";
         const [doctorRows] = await pool.execute("SELECT * FROM doctors WHERE doctor_id = ?", [doctor_id]);
+
         const dr_fee = doctorRows[0].dr_fee;
 
         //Check Slot
@@ -165,7 +166,7 @@ exports.addAppointment = async (req, res) => {
 
         //Notify Doctor
         await sendNotification({
-            receiver_id: doctor_id,
+            receiver_id: doctorRows[0].user_id,
             receiver_role: "doctor",
             message: "New appointment booked by patient.",
             type: "appointment",
@@ -285,14 +286,14 @@ exports.getMyAppointments = async (req, res) => {
 // Get Notifications
 exports.getNotifications = async (req, res) => {
     const userId = req.user.id;
-    const [rows] = await pool.execute(`SELECT * FROM notifications WHERE receiver_role='user' AND receiver_id=? ORDER BY created_at DESC`,[userId]);
+    const [rows] = await pool.execute(`SELECT * FROM notifications WHERE receiver_role='user' AND receiver_id=? ORDER BY created_at DESC`, [userId]);
     res.json(rows);
 };
 
 // Mark Notifications Read
 exports.markAsRead = async (req, res) => {
     const userId = req.user.id;
-    await pool.execute(`UPDATE notifications SET is_read = TRUE WHERE receiver_role='user' AND receiver_id=?`,[userId]);
+    await pool.execute(`UPDATE notifications SET is_read = TRUE WHERE receiver_role='user' AND receiver_id=?`, [userId]);
     res.json({ message: "Notifications marked as read" });
 };
 
@@ -308,7 +309,7 @@ exports.unreadCount = async (req, res) => {
     const userId = req.user.id;
     const [[row]] = await pool.execute(`SELECT COUNT(*) AS count FROM notifications WHERE receiver_role='user'
         AND receiver_id=?
-        AND is_read=FALSE`,[userId]);
+        AND is_read=FALSE`, [userId]);
     res.json({ count: row.count });
 };
 

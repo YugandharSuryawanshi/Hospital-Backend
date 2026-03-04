@@ -110,88 +110,124 @@ exports.getSlides = async (req, res) => {
 
 // Add doctor
 exports.addDoctor = async (req, res) => {
+    const connection = await pool.getConnection();
     try {
-        const { dr_name, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_address, dr_gender, dr_experience, department_id, dr_fee, dr_about, dr_status } = req.body;
+        await connection.beginTransaction();
+
+        const {
+            dr_name, dr_certificate, dr_position,
+            dr_speciality, dr_contact, dr_email,
+            dr_address, dr_gender, dr_experience,
+            department_id, dr_fee, dr_about, dr_status
+        } = req.body;
+
         const dr_photo = req.file ? req.file.filename : null;
-        const [existingUser] = await pool.execute("SELECT user_id FROM users WHERE user_email = ?", [dr_email]);
+
+        //Check existing user
+        const [existingUser] = await connection.execute("SELECT user_id FROM users WHERE user_email = ?", [dr_email]);
 
         if (existingUser.length > 0) {
-            return res.status(400).json({ message: "Doctor email already has login account" });
+            await connection.rollback();
+            return res.status(400).json({ message: "Doctor email already exists" });
         }
 
-        const [rows] = await pool.execute(
-            `INSERT INTO doctors (dr_name, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_photo, dr_address, dr_gender, dr_experience, department_id, dr_fee, dr_about, dr_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [dr_name, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_photo, dr_address, dr_gender, dr_experience, department_id, dr_fee, dr_about, dr_status]
-        );
-
-        const cleanName = dr_name.replace(/^dr\.\s*/i, "").trim(); //remove Dr. from name
-        const firstName = cleanName.split(" ")[0];   // take first word
+        //Create doctor login password
+        const cleanName = dr_name.replace(/^dr\.\s*/i, "").trim();
+        const firstName = cleanName.split(" ")[0];
         const plainPassword = `${firstName}@123`;
         const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-        await pool.execute(
-            `INSERT INTO users (user_name, user_email, user_phone, user_gender, user_address, user_password, user_profile, role)VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        //Insert into users first
+        const [userResult] = await connection.execute(`INSERT INTO users (user_name, user_email, user_phone, user_gender, user_address,
+            user_password, user_profile, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [dr_name, dr_email, dr_contact, dr_gender, dr_address, hashedPassword, dr_photo, "doctor"]);
 
+        const user_id = userResult.insertId;
+
+        //Insert into doctors WITH user_id
+        const [doctorResult] = await connection.execute(`INSERT INTO doctors (user_id, dr_name, dr_certificate, dr_position,
+            dr_speciality, dr_contact, dr_email, dr_photo, dr_address, dr_gender, dr_experience, department_id, dr_fee, dr_about,
+            dr_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [user_id, dr_name, dr_certificate, dr_position,
+            dr_speciality, dr_contact, dr_email, dr_photo, dr_address, dr_gender, dr_experience,
+            department_id, dr_fee, dr_about, dr_status]);
+
+        await connection.commit();
         res.json({
             message: "Doctor added successfully",
-            doctor_id: rows.insertId,
-            tempPassword: plainPassword  // admin can see & share with doctor
+            doctor_id: doctorResult.insertId,
+            tempPassword: plainPassword
         });
+
     } catch (err) {
+        await connection.rollback();
         console.error("addDoctor error", err);
         res.status(500).json({ error: err.message });
+    } finally {
+        connection.release();
     }
 };
 
 // Edit Doctor
 exports.updateDoctor = async (req, res) => {
+    const connection = await pool.getConnection();
     try {
+        await connection.beginTransaction();
+
         const doctorId = req.params.id;
-        const { dr_name, dr_gender, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_address, dr_experience, department_id, dr_fee, dr_about, dr_status } = req.body;
+        const { dr_name, dr_gender, dr_certificate, dr_position, dr_speciality, dr_contact, dr_email, dr_address,
+            dr_experience, department_id, dr_fee, dr_about, dr_status } = req.body;
+
         const dr_photo = req.file ? req.file.filename : null;
 
-        //Get OLD email & image from doctors
-        const [oldDoctor] = await pool.execute("SELECT dr_email, dr_photo FROM doctors WHERE doctor_id = ?", [doctorId]);
+        //Get old doctor data including user_id
+        const [oldDoctor] = await connection.execute("SELECT user_id, dr_photo FROM doctors WHERE doctor_id = ?", [doctorId]);
 
         if (oldDoctor.length === 0) {
+            await connection.rollback();
             return res.status(404).json({ message: "Doctor not found" });
         }
 
-        const oldEmail = oldDoctor[0].dr_email;
+        const user_id = oldDoctor[0].user_id;
         const oldImage = oldDoctor[0].dr_photo;
 
-        if (dr_photo === null) {
-            await pool.execute(
-                `UPDATE doctors SET dr_name = ?, dr_gender = ?, dr_certificate = ?, dr_position = ?, dr_experience = ?, dr_speciality = ?, department_id = ?, dr_contact = ?, dr_fee = ?, dr_email = ?, dr_address = ?, dr_about = ?, dr_status = ? WHERE doctor_id = ?`,
-                [dr_name, dr_gender, dr_certificate, dr_position, dr_experience, dr_speciality, department_id, dr_contact, dr_fee, dr_email, dr_address, dr_about, dr_status, doctorId]
-            );
-        }
-        else {
-            await pool.execute(
-                `UPDATE doctors SET dr_name = ?, dr_gender = ?, dr_certificate = ?, dr_position = ?, dr_experience = ?, dr_speciality = ?, department_id = ?, dr_contact = ?, dr_fee = ?, dr_email = ?, dr_photo = ?, dr_address = ?, dr_about = ?, dr_status = ? WHERE doctor_id = ?`,
-                [dr_name, dr_gender, dr_certificate, dr_position, dr_experience, dr_speciality, department_id, dr_contact, dr_fee, dr_email, dr_photo, dr_address, dr_about, dr_status, doctorId]
-            );
+        //Update doctors table
+        if (!dr_photo) {
+            await connection.execute(`UPDATE doctors SET dr_name = ?, dr_gender = ?, dr_certificate = ?, dr_position = ?,
+                dr_experience = ?, dr_speciality = ?, department_id = ?, dr_contact = ?, dr_fee = ?, dr_email = ?, 
+                dr_address = ?, dr_about = ?, dr_status = ? WHERE doctor_id = ?`,
+                [dr_name, dr_gender, dr_certificate, dr_position, dr_experience, dr_speciality, department_id,
+                    dr_contact, dr_fee, dr_email, dr_address, dr_about, dr_status, doctorId]);
+        } else {
+            await connection.execute(`UPDATE doctors SET dr_name = ?, dr_gender = ?, dr_certificate = ?, dr_position = ?,
+                dr_experience = ?, dr_speciality = ?, department_id = ?, dr_contact = ?, dr_fee = ?, dr_email = ?, dr_photo = ?,
+                dr_address = ?, dr_about = ?, dr_status = ? WHERE doctor_id = ?`,
+                [dr_name, dr_gender, dr_certificate, dr_position, dr_experience, dr_speciality, department_id,
+                    dr_contact, dr_fee, dr_email, dr_photo, dr_address, dr_about, dr_status, doctorId]);
         }
 
-        await pool.execute(`UPDATE users SET user_name = ?, user_email = ?, user_phone = ?, user_gender = ?, user_address = ?, user_profile = ? WHERE user_email = ? AND role = 'doctor'`,
-            [dr_name, dr_email, dr_contact, dr_gender, dr_address, dr_photo ? dr_photo : oldImage, oldEmail]
-        ); //for if admin not update image put old image as it is use oldImage also.
+        //Update users table using user_id
+        await connection.execute(`UPDATE users SET user_name = ?, user_email = ?, user_phone = ?, user_gender = ?, user_address = ?,
+            user_profile = ? WHERE user_id = ?`,
+            [dr_name, dr_email, dr_contact, dr_gender, dr_address, dr_photo ? dr_photo : oldImage, user_id]);
+
+        await connection.commit();
 
         res.json({ message: "Doctor updated successfully" });
-
     } catch (err) {
+        await connection.rollback();
         console.error("Update doctor error", err);
         res.status(500).json({ error: err.message });
+    } finally {
+        connection.release();
     }
-}
+};
 
 // Get all doctors
 exports.getAllDoctors = async (req, res) => {
     try {
         const [rows] = await pool.execute(`SELECT d.doctor_id, d.department_id, d.dr_name, d.dr_speciality, d.dr_position, d.dr_contact, d.dr_email,
     d.dr_gender, d.dr_experience, d.dr_fee, d.dr_photo, d.dr_status, d.dr_certificate, d.dr_address, d.dr_about, dept.department_name
-    FROM doctors d LEFT JOIN departments dept ON d.department_id = dept.department_id ORDER BY d.doctor_id DESC`);
+    FROM doctors d LEFT JOIN departments dept ON d.department_id = dept.department_id ORDER BY d.doctor_id`);
         res.json(rows);
     } catch (err) {
         console.error("getAllDoctors error", err);
@@ -203,26 +239,27 @@ exports.getAllDoctors = async (req, res) => {
 exports.deleteDoctor = async (req, res) => {
     try {
         const doctorId = req.params.id;
-        const [rows] = await pool.execute("SELECT dr_email FROM doctors WHERE doctor_id = ?", [doctorId]);
+        const [rows] = await pool.execute("SELECT user_id FROM doctors WHERE doctor_id = ?", [doctorId]);// Get user_id from doctors
+
         if (rows.length === 0) {
             return res.status(404).json({ message: "Doctor not found" });
         }
-        const doctorEmail = rows[0].dr_email;
-        await pool.execute("DELETE FROM doctors WHERE doctor_id = ?", [doctorId]);
-        await pool.execute("DELETE FROM users WHERE email = ? AND role = 'doctor'", [doctorEmail]);
+        const user_id = rows[0].user_id;
+        // Delete from users (doctor auto deleted because of CASCADE)
+        await pool.execute("DELETE FROM users WHERE user_id = ?", [user_id]);
         res.json({ message: "Doctor deleted successfully" });
     } catch (err) {
         console.error("deleteDoctor error", err);
         res.status(500).json({ error: err.message });
     }
-}
+};
 
 // Get all appointments
 exports.getAllAppointments = async (req, res) => {
     try {
         const [rows] = await pool.execute(`SELECT a.appointment_id, a.user_name, a.user_contact, a.user_email, a.appointment_datetime,
             a.appointment_date, a.appointment_time,a.notes, a.status, a.doctor_id, d.doctor_id, d.dr_name, d.dr_position, d.dr_certificate,
-            d.dr_photo FROM appointments AS a JOIN doctors AS d ON a.doctor_id = d.doctor_id ORDER BY a.appointment_id DESC`);
+            d.dr_photo FROM appointments AS a JOIN doctors AS d ON a.doctor_id = d.doctor_id ORDER BY a.appointment_id ASC`);
         res.json(rows);
     } catch (err) {
         console.error("getAllAppointments error", err);
@@ -404,14 +441,15 @@ exports.addDepartment = async (req, res) => {
 
     try {
         const [rows] = await pool.execute(`INSERT INTO departments (department_name, department_description) VALUES (?, ?)`,
-            [department_name, department_desc]
-        );
+            [department_name, department_desc]);
+
         res.json({ message: "Department added successfully", department_id: rows.insertId });
+
     } catch (err) {
         console.error("addDepartment error", err);
         res.status(500).json({ error: err.message });
     }
-}
+};
 
 // Get All Departments
 exports.getDepartments = async (req, res) => {
@@ -455,9 +493,8 @@ exports.deleteDepartment = async (req, res) => {
 exports.getNotifications = async (req, res) => {
     try {
         const adminId = req.user.id; // from verifyToken
-
-        const [rows] = await pool.execute(`SELECT * FROM notifications WHERE receiver_role='admin' AND receiver_id=? 
-            ORDER BY created_at DESC`, [adminId]);
+        const [rows] = await pool.execute(`SELECT * FROM notifications WHERE receiver_role='admin'
+            AND receiver_id=? ORDER BY created_at DESC`, [adminId]);
 
         res.json(rows);
     } catch (err) {
@@ -468,7 +505,7 @@ exports.getNotifications = async (req, res) => {
 exports.unreadCount = async (req, res) => {
     try {
         const adminId = req.user.id;
-        const [rows] = await pool.execute(`SELECT COUNT(*) as count FROM notifications WHERE receiver_role='admin' 
+        const [rows] = await pool.execute(`SELECT COUNT(*) as count FROM notifications WHERE receiver_role='admin'
             AND receiver_id=? AND is_read = false`, [adminId]);
 
         res.json({ count: rows[0].count });
