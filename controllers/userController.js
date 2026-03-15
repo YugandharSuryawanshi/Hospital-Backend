@@ -179,7 +179,7 @@ exports.addAppointment = async (req, res) => {
             await sendNotification({
                 receiver_id: admin.user_id,
                 receiver_role: "admin",
-                message: "New appointment received.",
+                message: "New appointment received. Check Appointments for more Info.",
                 type: "appointment",
                 related_id: appointment_id
             });
@@ -276,7 +276,6 @@ exports.getMyAppointments = async (req, res) => {
             JOIN bills b ON b.reference_id = a.appointment_id
             WHERE a.user_id = ? ORDER BY a.created_at DESC;`, [user_id]);
         res.json(rows);
-
     } catch (err) {
         console.error("Get Appointments Error:", err);
         res.status(500).json({ message: "Failed to fetch appointments" });
@@ -285,31 +284,47 @@ exports.getMyAppointments = async (req, res) => {
 
 // Get Notifications
 exports.getNotifications = async (req, res) => {
-    const userId = req.user.id;
-    const [rows] = await pool.execute(`SELECT * FROM notifications WHERE receiver_role='user' AND receiver_id=? ORDER BY created_at DESC`, [userId]);
-    res.json(rows);
+    try {
+        const userId = req.user.id;
+        const [rows] = await pool.execute(`SELECT * FROM notifications WHERE receiver_role='user' AND receiver_id=? ORDER BY created_at DESC`, [userId]);
+        res.json(rows);
+    } catch (error) {
+        console.error('Get Notification Error');
+    }
 };
 
 // Mark Notifications Read
 exports.markAsRead = async (req, res) => {
-    const userId = req.user.id;
-    await pool.execute(`UPDATE notifications SET is_read = TRUE WHERE receiver_role='user' AND receiver_id=?`, [userId]);
-    res.json({ message: "Notifications marked as read" });
+    try {
+        const userId = req.user.id;
+        await pool.execute(`UPDATE notifications SET is_read = TRUE WHERE receiver_role='user' AND receiver_id=?`, [userId]);
+        res.json({ message: "Notifications marked as read" });
+    } catch (error) {
+        console.error('Update Notification Error');
+    }
 };
 
 // Delete Notification from user
 exports.deleteNotification = async (req, res) => {
-    const { id } = req.params;
-    await pool.execute(`DELETE FROM notifications WHERE notification_id = ? AND user_id = ?`, [id, req.user.id]);
-    res.json({ message: "Notification deleted" });
+    try {
+        const { id } = req.params;
+        await pool.execute(`DELETE FROM notifications WHERE notification_id = ? AND user_id = ?`, [id, req.user.id]);
+        res.json({ message: "Notification deleted" });
+    } catch (error) {
+        console.error('Delete Notification Error');
+    }
 };
 
 // Get Unread Notification Count
 exports.unreadCount = async (req, res) => {
-    const userId = req.user.id;
-    const [[row]] = await pool.execute(`SELECT COUNT(*) AS count FROM notifications WHERE receiver_role='user'
+    try {
+        const userId = req.user.id;
+        const [[row]] = await pool.execute(`SELECT COUNT(*) AS count FROM notifications WHERE receiver_role='user'
         AND receiver_id=?
         AND is_read=FALSE`, [userId]);
-    res.json({ count: row.count });
+        res.json({ count: row.count });
+    } catch (error) {
+        console.error('UnReadCount Error');
+    }
 };
 

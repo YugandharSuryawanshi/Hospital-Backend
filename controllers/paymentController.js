@@ -20,7 +20,7 @@ exports.createOrder = async (req, res) => {
         }
 
         //Get Bill
-        const [billRows] = await pool.execute("SELECT final_amount FROM bills WHERE bill_id = ?", [bill_id]);
+        const [billRows] = await pool.execute("SELECT final_amount, patient_id FROM bills WHERE bill_id = ?", [bill_id]);
 
         if (billRows.length === 0) {
             return res.status(404).json({ success: false, message: "Bill not found" });
@@ -60,7 +60,6 @@ exports.createOrder = async (req, res) => {
 exports.verifyPayment = async (req, res) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bill_id } = req.body;
-
         const body = razorpay_order_id + "|" + razorpay_payment_id;
 
         const expected = crypto
@@ -80,10 +79,20 @@ exports.verifyPayment = async (req, res) => {
         await pool.execute(`UPDATE bills SET bill_status='paid' WHERE bill_id=?`, [bill_id]);
 
         //Update Appointments Table
-        await pool.execute(`UPDATE appointments a
-            JOIN bills b ON a.appointment_id = b.reference_id
+        await pool.execute(`UPDATE appointments a JOIN bills b ON a.appointment_id = b.reference_id
             SET a.payment_status='paid' WHERE b.bill_id=?`, [bill_id]);
 
+        //Get Bill
+        const [billRows] = await pool.execute("SELECT final_amount, patient_id, reference_id FROM bills WHERE bill_id = ?", [bill_id]);
+
+        //Create notification
+        await sendNotification({
+            receiver_id: billRows[0].patient_id,
+            receiver_role: "user",
+            message: "Transaction Is Done Successfully",
+            type: "appointment",
+            related_id: billRows[0].reference_id
+        });
         res.json({ success: true });
 
     } catch (error) {
@@ -101,12 +110,21 @@ exports.paymentFailed = async (req, res) => {
         await pool.execute(`UPDATE payments SET payment_status='failed' WHERE razorpay_order_id=?`, [razorpay_order_id]);
 
         //Update appointment table
-        await pool.execute(`UPDATE appointments a
-            JOIN bills b ON a.appointment_id = b.reference_id
+        await pool.execute(`UPDATE appointments a JOIN bills b ON a.appointment_id = b.reference_id
             SET a.payment_status='failed' WHERE b.bill_id=?`, [bill_id]);
+        
+        //Get Bill
+        const [billRows] = await pool.execute("SELECT patient_id, reference_id FROM bills WHERE bill_id = ?", [bill_id]);
+        //Create notification
+        await sendNotification({
+            receiver_id: billRows[0].patient_id,
+            receiver_role: "user",
+            message: "Transaction Failed..! Try Again..",
+            type: "appointment",
+            related_id: billRows[0].reference_id
+        });
 
         res.json({ success: true });
-
     } catch (error) {
         console.log(error);
         res.status(500).json({ success: false });

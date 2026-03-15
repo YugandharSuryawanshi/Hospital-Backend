@@ -108,6 +108,18 @@ exports.getSlides = async (req, res) => {
     }
 };
 
+// Delete slide
+exports.deleteSlide = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.execute("DELETE FROM slides WHERE slide_id = ?", [id]);
+        res.json({ message: "Slide deleted successfully" });
+    } catch (err) {
+        console.error("deleteSlide error", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
 // Add doctor
 exports.addDoctor = async (req, res) => {
     const connection = await pool.getConnection();
@@ -489,6 +501,7 @@ exports.deleteDepartment = async (req, res) => {
     }
 }
 
+// Notifications
 // Get notifications
 exports.getNotifications = async (req, res) => {
     try {
@@ -515,7 +528,7 @@ exports.unreadCount = async (req, res) => {
     }
 };
 
-exports.markNotificationAsRead = async (req, res) => {
+exports.markAsRead = async (req, res) => {
     try {
         const adminId = req.user.id;
         await pool.execute(`UPDATE notifications SET is_read = true WHERE receiver_role='admin' AND receiver_id=?`, [adminId]);
@@ -526,28 +539,21 @@ exports.markNotificationAsRead = async (req, res) => {
     }
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Delete slide
-// Some working are pending.
-exports.deleteSlide = async (req, res) => {
+exports.deleteNotification = async (req, res) => {
     try {
         const { id } = req.params;
-        await pool.execute("DELETE FROM slides WHERE slide_id = ?", [id]);
-        res.json({ message: "Slide deleted successfully" });
-    } catch (err) {
-        console.error("deleteSlide error", err);
-        res.status(500).json({ error: err.message });
+        await pool.execute(`DELETE FROM notifications WHERE notification_id = ? AND receiver_id = ?`, [id, req.user.id]);
+        res.json({ message: "Notification deleted" });
+    } catch (error) {
+        console.error("Delete Notification Error");
+        
     }
 };
+
+
+
+
+
+
+
+

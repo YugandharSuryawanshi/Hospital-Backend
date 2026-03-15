@@ -7,13 +7,24 @@ const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
 
 router.get("/dashboard", verifyToken, isDoctor, doctorController.getDashboard);
-router.get('/getDoctorID/:id', verifyToken, isDoctor, doctorController.getDoctorId);
-router.get("/doctor/stats/:doctor_id", verifyToken, isDoctor, doctorController.getDoctorStats);
-router.get("/doctor/queue/:doctor_id", verifyToken, isDoctor, doctorController.getPatientQueue);
-router.get("//doctor/todayAppointments/:doctor_id", verifyToken, isDoctor, doctorController.getTodayAppointments);
-router.put("/doctor/updateStatus/:appointment_id", doctorController.updateAppointmentStatus);
+
+router.get("/getDoctorID", verifyToken, isDoctor, doctorController.getDoctorId);
+
+router.get("/stats/:doctorId", verifyToken, isDoctor, doctorController.getDoctorStats);
+
+router.get("/appointments-week/:doctorId", verifyToken, isDoctor, doctorController.getDoctorChart);
+
+router.get("/revenue/:doctorId", verifyToken, isDoctor, doctorController.revenueChart);
+
+router.get("/recent/:doctorId", verifyToken, isDoctor, doctorController.recentAppointment);
+
+router.get("/gender/:doctorId", verifyToken, isDoctor, doctorController.genderChart);
+
+
+
 router.get('/notifications', verifyToken, isDoctor, doctorController.getNotifications);
+router.put("/notifications/read", verifyToken, isDoctor, doctorController.markAsRead);
 router.get('/notifications/unread-count', verifyToken, isDoctor, doctorController.unreadCount);
-router.put('/notifications/mark-read', verifyToken, isDoctor, doctorController.markNotificationAsRead);
+router.delete("/deleteNotification/:id", verifyToken, isDoctor, doctorController.deleteNotification);
 
 module.exports = router;
